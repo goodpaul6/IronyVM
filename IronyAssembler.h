@@ -32,6 +32,9 @@
 /* Maximum value for a number */
 #define MAX_NUM_VALUE	0xFFFFFF
 
+ /* Maximum amount of labels */
+ #define MAX_LABEL 0xFFFFFF
+
 /* Instruction strings */
 #define LOAD_INSTR	"ldi"
 #define HALT_INSTR	"hlt"
@@ -74,6 +77,7 @@ extern int instr_number;
 extern TOKEN_VALUE token_value;
 extern FILE* input_file;
 extern FILE* output_file;
+extern char* labels[MAX_LABEL];
 
 int open_files(const char* inp, const char* out);
 int read_token();

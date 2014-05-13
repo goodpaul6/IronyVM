@@ -33,7 +33,15 @@ int read_token()
 	while(isspace(last))
 		last = fgetc(input_file);
 
-	if(last == '@')
+	if(last == ';')
+	{
+		last = fgetc(input_file);
+		while(last != ';')
+			last = fgetc(input_file);
+		last = fgetc(input_file);
+		read_token();
+	}
+	else if(last == '@')
 	{
 		last = fgetc(input_file);
 		int pos = 0;
@@ -171,6 +179,38 @@ void parse_and_convert()
 				read_token();
 				int r2 = token_value.val;
 				write_arith_instr(DIV, r_o, r1, r2);
+			}
+
+			if(strcmp(token_value.str, STO_INSTR) == 0)
+			{
+				read_token();
+				int r1 = token_value.val;
+				read_token();
+				int r2 = token_value.val;
+				fprintf(output_file, "%02x%02x%02x00\n", STO, r1, r2);
+			}
+
+			if(strcmp(token_value.str, CALL_INSTR) == 0)
+			{
+				read_token();
+				int r1 = token_value.val;
+				fprintf(output_file, "%02x%02x0000\n", CAL, r1);
+			}
+
+			if(strcmp(token_value.str, LODR_INSTR) == 0)
+			{
+				read_token();
+				int r1 = token_value.val;
+				read_token();
+				int r2 = token_value.val;
+				fprintf(output_file, "%02x%02x%02x00\n", LOADR, r1, r2);
+			}
+
+			if(strcmp(token_value.str, PRNT_INSTR) == 0)
+			{
+				read_token();
+				int r1 = token_value.val;
+				fprintf(output_file, "%02x%02x0000\n", PRNT, r1);
 			}
 		}
 
