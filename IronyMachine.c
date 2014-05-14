@@ -116,7 +116,7 @@ void process(bool debug)
 		break;
 	case JMPF:
 		if(debug)
-			printf("jmp r%d #%d #%d\n", reg1, registers[reg1], immd);
+			printf("jmpf r%d #%d #%d\n", reg1, registers[reg1], immd);
 		if(registers[reg1] > 0)
 			esp = immd;
 		break;
@@ -132,8 +132,10 @@ void process(bool debug)
 		break;
 	case MSET:
 		if(debug)
-			printf("mset r%d r%d r%d", reg1, reg2, reg3);
-		memset((void*)(memory[registers[reg1]]), registers[reg2], registers[reg3]);
+			printf("mset r%d r%d r%d\n", reg1, reg2, reg3);
+		uintptr_t i;
+		for(i = registers[reg1]; i < registers[reg1] + registers[reg3]; i++)
+			memory[i] = registers[reg2];
 		break;
 	};
 }

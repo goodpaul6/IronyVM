@@ -1,16 +1,2 @@
 main:
-; load value of 0 into register 0 ;
-ldi 0 0 
-; load value of 10 into register 2 ;
-ldi 2 10
-; add register 0 and 2 together, place result in register 0 ;
-add 0 0 2
-; print the value of register 0 ;
-prt 0
-; load value 0 into register 1 ;
-ldi 1 0
-; store value in register 0 into mem at location denoted by register 1 ;
-sto 1 0
-; jmp to the first instr ;
-jmp main
-
+	ldi 5 "jello"

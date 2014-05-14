@@ -4,14 +4,15 @@
 #include <stdio.h>
 
 /* EXAMPLE PROGRAM: */
-/* @start:
+/* start:
+ * ldi 10 "hello world" ; load hello world into the 10th location across the stack ;
  * ldi 0 100
  * ldi 1 200
  * add 0 0 1
  * add 0 0 1
  * add 0 0 1
  * prt 0
- * jmp @start
+ * jmp start
 */
 
 /* Maximum string length */
@@ -61,6 +62,7 @@ typedef enum
 	TOK_INSTR_OR_LABEL,
 	TOK_LABEL,
 	TOK_LDNUM,
+	TOK_STR,
 	TOK_HEX
 } TOKEN;
 
