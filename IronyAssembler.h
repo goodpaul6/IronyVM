@@ -55,7 +55,7 @@
 #define FREE_INSTR	"fre"
 #define MSET_INSTR	"mst"
 
-
+/* Possible token types */
 typedef enum
 {
 	TOK_INSTR_OR_LABEL,
@@ -64,6 +64,7 @@ typedef enum
 	TOK_HEX
 } TOKEN;
 
+/* struct which holds the value of a token */
 typedef struct
 {
 	TOKEN tok;
@@ -72,14 +73,20 @@ typedef struct
 	double val;
 } TOKEN_VALUE;
 
+/* instruction number (for labeling) */
 extern int instr_number;
+/* global token vlaue for lexer */
 extern TOKEN_VALUE token_value;
 extern FILE* input_file;
 extern FILE* output_file;
+/* index = instruction #, char* = label name */
 extern char* labels[MAX_LABEL];
 
+/* opens files and initializes program */
 int open_files(const char* inp, const char* out);
+/* lexes a the token from input file (returns 0 on eof/done) */
 int read_token();
+/* parses and simultaneously converts lexed data to assembled bytecodes */
 void parse_and_convert();
 
 #endif
