@@ -1,3 +1,4 @@
+main:
 ; load value of 0 into register 0 ;
 ldi 0 0 
 ; load value of 10 into register 2 ;
@@ -10,4 +11,6 @@ prt 0
 ldi 1 0
 ; store value in register 0 into mem at location denoted by register 1 ;
 sto 1 0
+; jmp to the first instr ;
+jmp main
 
