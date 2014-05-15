@@ -53,9 +53,9 @@ void output_string()
 	{
 		fprintf(output_file, "%02xff%04x\n", LOAD, *c);
 		fprintf(output_file, "%02x%02x%02x%02x\n", MSET, 254, 255, 253);
-		fprintf(output_file, "%02x%02x%04x\n", LOAD, 254, last_reg + mem_pos);
 		c++;
 		mem_pos++;
+		fprintf(output_file, "%02x%02x%04x\n", LOAD, 254, last_reg + mem_pos);
 	}
 	fprintf(output_file, "%02x%02x%04x\n", LOAD, 255, 0);
 	fprintf(output_file, "%02x%02x%02x%02x\n", MSET, 254, 255, 253);

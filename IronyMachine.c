@@ -135,7 +135,11 @@ void process(bool debug)
 			printf("mset r%d r%d r%d\n", reg1, reg2, reg3);
 		uintptr_t i;
 		for(i = registers[reg1]; i < registers[reg1] + registers[reg3]; i++)
+		{	
 			memory[i] = registers[reg2];
+			if(debug)
+				printf("memory %i: %i, %c\n", i, registers[reg2], registers[reg2]);
+		}
 		break;
 	};
 }
@@ -177,7 +181,9 @@ void m_prints()
 // prints out a string at the memory location denoted by register (denoted by reg2 value) of length register (denoted by reg3 value)
 void m_printsl()
 {
-	printf("%.*s", registers[reg3], &memory[registers[reg2]]); 
+	printf("called printsl: len: %i, pos: %i\n", registers[reg3], registers[reg2]);
+	char* c = (char*)&memory[registers[reg2]];
+	printf("%.*s", registers[reg3], c); 
 }
 
 // reads (from stdin) register (denoted by reg3 value) value bytes into memory location denoted by register (denoted by reg2 value)

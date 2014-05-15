@@ -1,2 +1,6 @@
 main:
-	ldi 5 "jello"
+	ldi 0 "jello"
+	ldi 0 2
+	ldi 1 0
+	ldi 2 4
+	cal 0 1 2
