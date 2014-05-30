@@ -12,7 +12,7 @@
  * add 0 0 1
  * add 0 0 1
  * prt 0
- * jmp start
+ * jmp @start
 */
 
 /* Maximum string length */
@@ -25,7 +25,8 @@
 #define LABEL_BYTES 1
 
 /* Modifiers */
-#define HEX_MOD	"#"
+#define HEX_MOD	'#'
+#define LABEL_REF_MOD '@'
 
 /* Maximum bytes read for a number */
 #define MAX_NUM_BYTES	8
@@ -55,11 +56,13 @@
 #define ALOC_INSTR	"alc"
 #define FREE_INSTR	"fre"
 #define MSET_INSTR	"mst"
+#define JBCK_INSTR	"jbk"
 
 /* Possible token types */
 typedef enum
 {
-	TOK_INSTR_OR_LABEL,
+	TOK_INSTR,
+	TOK_LABEL_REF,
 	TOK_LABEL,
 	TOK_LDNUM,
 	TOK_STR,

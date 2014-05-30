@@ -1,6 +1,29 @@
-main:
-	ldi 0 "jello"
-	ldi 0 2
-	ldi 1 0
-	ldi 2 4
-	cal 0 1 2
+; registers 240-249 dedicated to "arguments" ;
+; registers 230-239 dedicated to processing ;
+; registers 225-229 are return values ;
+main:	
+	ldi 0 "hello world!"
+	ldi 240 5
+	ldi 241 10
+	jmp @addTwoValues
+	ldi 240 20
+	ldi 241 40
+	jmp @addTwoValues
+	ldi 240 0
+	jmp @prints
+	ldi 0 "goodbye world!"
+	jmp @prints
+	hlt
+
+; adds 2 values in register 240, 241 and places the sum into register 225 ;
+addTwoValues:
+	add 225 240 241
+	prt 225
+	jbk
+
+; prints the string stored at memory location denoted by register 240 ;
+prints:
+	ldi 230 1
+	cal 230 240 0
+	jbk
+

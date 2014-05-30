@@ -12,14 +12,31 @@ FILE* output_file = NULL;
 char temp_buffer[MAX_STR];
 char* labels[MAX_LABEL];
 int last_reg = 0;
+static int last = ' ';
 
 int open_files(const char* inp, const char* out)
 {
+	unsigned int i; for(i = 0; i < MAX_LABEL; i++) labels[i] = NULL;
+
 	input_file = fopen(inp, "r");
 	
 	if(!input_file)
 		return -1;
+
+	int w = read_token();
+
+	while(w != 0)
+	{
+		if(token_value.tok == TOK_LABEL)
+		{
+			labels[token_value.instr_num] = strdup(token_value.str);
+			printf("Found label: %s, %i\n", labels[token_value.instr_num], token_value.instr_num);
+		}
+		w = read_token();
+	}
 	
+	rewind(input_file);
+
 	output_file = fopen(out, "w");
 	
 	if(!output_file)
@@ -27,8 +44,10 @@ int open_files(const char* inp, const char* out)
 
 	token_value.instr_num = 0;
 	token_value.str = NULL;
-
-	unsigned int i; for(i = 0; i < MAX_LABEL; i++) labels[i] = NULL;
+	instr_number = 0;
+	temp_buffer[0] = '\0';
+	last_reg = 0;
+	last = ' ';
 }
 
 int get_instr_value_from_label(const char* label)
@@ -47,23 +66,29 @@ void output_string()
 {
 	int mem_pos = 0;
 	char* c = token_value.str;
+	// load memory location of string into register 254
 	fprintf(output_file, "%02x%02x%04x\n", LOAD, 254, last_reg);
+	// load length of memory to be set (per character, so 1) into reg 253
 	fprintf(output_file, "%02x%02x%04x\n", LOAD, 253, 1);
 	while(*c)
 	{
+		// place character into register 255
 		fprintf(output_file, "%02xff%04x\n", LOAD, *c);
+		// make memory at location represented by reg 254 be set to value in register 255, length [reg] 253
 		fprintf(output_file, "%02x%02x%02x%02x\n", MSET, 254, 255, 253);
 		c++;
 		mem_pos++;
+		// reset mem pos to be at the correct location
 		fprintf(output_file, "%02x%02x%04x\n", LOAD, 254, last_reg + mem_pos);
 	}
+	// reset [reg] 255 to null
 	fprintf(output_file, "%02x%02x%04x\n", LOAD, 255, 0);
+	// place the null terminator at the end of the string in memory
 	fprintf(output_file, "%02x%02x%02x%02x\n", MSET, 254, 255, 253);
 }
 
 int read_token()
 {
-	static int last = ' ';
 	while(isspace(last))
 		last = fgetc(input_file);
 
@@ -97,12 +122,30 @@ int read_token()
 		}
 		else
 		{
-			token_value.tok = TOK_INSTR_OR_LABEL;
+			token_value.tok = TOK_INSTR;
 			token_value.instr_num = instr_number++;
+			printf("instr: %s, at loc: %i\n", temp_buffer, instr_number);
 			if(token_value.str)
 				free(token_value.str);
 			token_value.str = strdup(temp_buffer);
 		}
+	}
+	else if(last == LABEL_REF_MOD)
+	{
+		int pos = 0;
+		last = fgetc(input_file);
+		while(isalpha(last))
+		{
+			temp_buffer[pos] = last;
+			last = fgetc(input_file);
+			pos += 1;
+			temp_buffer[pos] = '\0';
+		}
+		token_value.tok = TOK_LABEL_REF;
+		token_value.instr_num = instr_number;
+		if(token_value.str)
+			free(token_value.str);
+		token_value.str = strdup(temp_buffer);
 	}
 	else if(isdigit(last))
 	{
@@ -142,6 +185,7 @@ int read_token()
 		last = fgetc(input_file);
 		while(last != '"')
 		{
+			instr_number += 3;
 			temp_buffer[pos] = last;
 			last = fgetc(input_file);
 			pos += 1;
@@ -149,6 +193,7 @@ int read_token()
 		}
 		last = fgetc(input_file);
 		token_value.tok = TOK_STR;
+		instr_number += 3;
 		token_value.instr_num = instr_number;
 		if(token_value.str)
 			free(token_value.str);
@@ -169,10 +214,13 @@ void write_arith_instr(int instr_val, int r_o, int r1, int r2)
 void parse_and_convert()
 {
 	int w = read_token();
+
 	while(w != 0)
 	{
-		if(token_value.tok == TOK_INSTR_OR_LABEL)
+		if(token_value.tok == TOK_INSTR)
 		{
+			if(!token_value.str) return;
+
 			if(strcmp(token_value.str, LOAD_INSTR) == 0)
 			{
 				read_token();
@@ -334,12 +382,16 @@ void parse_and_convert()
 				int r3 = token_value.val;
 				fprintf(output_file, "%02x%02x%02x%02x", MSET, r1, r2, r3);
 			}
-		}
-		else if(token_value.tok == TOK_LABEL)
-		{
-			// TODO: FIX JUMPING BUG (CURRENTLY HACK FIXED)
-			if(token_value.instr_num > 0) token_value.instr_num -= 1;
-			labels[token_value.instr_num] = strdup(token_value.str);
+
+			if(strcmp(token_value.str, JBCK_INSTR) == 0)
+			{
+				fprintf(output_file, "%02x000000\n", JBCK);
+			}
+
+			if(strcmp(token_value.str, HALT_INSTR) == 0)
+			{
+				fprintf(output_file, "00000000\n");
+			}
 		}
 		w = read_token();
 	}

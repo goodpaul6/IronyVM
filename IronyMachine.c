@@ -18,7 +18,8 @@ int reg2;
 int reg3;
 int immd;
 int limd;
-uintptr_t memory[ALLOC_MEM];
+int jbck_pos;
+uintptr_t* memory;
 external_function functions[MAX_EXT_FUNC];
 
 /* prototypes */
@@ -112,13 +113,17 @@ void process(bool debug)
 	case JMP:
 		if(debug)
 			printf("jmp #%d\n", limd);
-		esp = limd;
+		jbck_pos = esp;
+		esp = limd - 1;
 		break;
 	case JMPF:
 		if(debug)
 			printf("jmpf r%d #%d #%d\n", reg1, registers[reg1], immd);
 		if(registers[reg1] > 0)
-			esp = immd;
+		{	
+			jbck_pos = esp;
+			esp = immd - 1;
+		}
 		break;
 	case ALOC:
 		if(debug)
@@ -140,6 +145,11 @@ void process(bool debug)
 			if(debug)
 				printf("memory %i: %i, %c\n", i, registers[reg2], registers[reg2]);
 		}
+		break;
+	case JBCK:
+		if(debug)
+			printf("jbck %i\n", jbck_pos);
+		esp = jbck_pos;
 		break;
 	};
 }
@@ -175,15 +185,25 @@ void m_printc()
 // prints out a string at the memory location denoted by register (denoted by reg2 value) 
 void m_prints()
 {
-	printf("%s", &memory[registers[reg2]]);
+	int v = registers[reg2];
+	int i = memory[v];
+	while(i)
+	{
+		putchar(i);
+		i = memory[++v];
+	}
 }
 
 // prints out a string at the memory location denoted by register (denoted by reg2 value) of length register (denoted by reg3 value)
 void m_printsl()
 {
-	printf("called printsl: len: %i, pos: %i\n", registers[reg3], registers[reg2]);
-	char* c = (char*)&memory[registers[reg2]];
-	printf("%.*s", registers[reg3], c); 
+	int v = registers[reg2];
+	int i = memory[v];
+	while((v - registers[reg2]) < registers[reg3])
+	{
+		putchar(i);
+		i = memory[++v];
+	}
 }
 
 // reads (from stdin) register (denoted by reg3 value) value bytes into memory location denoted by register (denoted by reg2 value)
@@ -194,31 +214,42 @@ void m_gets()
 	memory[loc + registers[reg3]] = 0;	// null terminate the string
 }
 
-void run_program(const int* program)
+void run_program(const int* program, int debug)
 {
 	if(running) return;
 	running = true;
 	esp = 0;
+	jbck_pos = 0;
+	
+	memory = malloc(sizeof(uintptr_t) * ALLOC_MEM);
+
+	bind(0, &m_printc);
+	bind(1, &m_prints);
+	bind(2, &m_printsl);
+	bind(3, &m_gets);
+
 	while(running)
 	{
 		decode(program[esp]);
-		process(true);
+		process(debug);
 		esp += 1;
 	}
 }
 
 int main(int argc, char* argv[])
 {
-	if(argc == 2)
+	if(argc >= 2)
 	{
-		bind(0, &m_printc);
-		bind(1, &m_prints);
-		bind(2, &m_printsl);
-		bind(3, &m_gets);
+		int deb = false;
+		if(argc == 3)
+			deb = true;
+		else
+			deb = false;
 		char* fname = argv[1];
 		int* prog = load_from_file(argv[1]);
-		run_program(prog);
+		run_program(prog, deb);
 		free(prog);
+		free(memory);
 	}
 	else
 		printf("ERROR: Invalid arguments. Expected bytecode filename after program name.");

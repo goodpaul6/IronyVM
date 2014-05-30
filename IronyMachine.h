@@ -25,6 +25,7 @@
 #define ALOC	0x0F
 #define FREE	0x10
 #define MSET	0x11
+#define JBCK	0x12
 
 /* masks for instruction data */
 #define INSTR_MASK	0xFF000000	// instruction value
@@ -56,9 +57,10 @@ extern int reg2;
 extern int reg3;
 extern int immd; // immediate value
 extern int limd; // long immediate value (0xFFFFFF). This allows much larger values to be represented where required (at the tradeoff of register arguments)
+extern int jbck_pos; // jump back position
 
 /* memory (the user can store values here) */
-extern uintptr_t memory[ALLOC_MEM];
+extern uintptr_t* memory;
 
 /* the bound functions use the operand values to supplement their function (thus, they take no arguments) */
 typedef void(*external_function)();
@@ -70,7 +72,7 @@ extern external_function functions[MAX_EXT_FUNC];
 void bind(const int idx, external_function function);
 
 /* a helper function which runs a program given as an array of integers */
-void run_program(const int* program);
+void run_program(const int* program, int debug);
 
 /* a helper function which loads the program from a file */
 int* load_from_file(const char* fileName);
