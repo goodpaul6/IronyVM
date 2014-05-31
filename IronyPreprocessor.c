@@ -6,6 +6,9 @@
 #define MAX_INCLUDE_AMT		256
 
 char* included_files[MAX_INCLUDE_AMT];
+int cur_include = 0;
+
+void free_all_allocs();
 
 int included_previously(const char* filename)
 {
@@ -20,7 +23,14 @@ int included_previously(const char* filename)
 
 char* get_file_as_string(const char* filename)
 {
-	FILE* file = fopen(filename, "r");
+	if(process_file(filename, "temp_out"))
+	{
+		fprintf(stderr, "ERROR: Unable to process included file. Aborting...\n");
+		free_all_allocs();
+		abort();
+	}
+	
+	FILE* file = fopen("temp_out", "r");
 	if(!file)
 		return NULL;
 	fseek(file, 0L, SEEK_END);
@@ -41,71 +51,92 @@ char* get_file_as_string(const char* filename)
 	return buff;
 }
 
+int process_file(const char* inp_fname, const char* out_fname)
+{
+	FILE* file = fopen(inp_fname, "r");
+	FILE* output = fopen(out_fname, "w");
+	if(!file)
+	{
+		fprintf(stderr, "ERROR: Supplied file is invalid.\n");
+		return 1;
+	}
+	
+	if(!output)
+	{
+		fprintf(stderr, "ERROR: Not able to create output file.\n");
+		return 1;
+	}
+	
+	int last = ' ';
+	char fname_buf[MAX_FILENAME_LENGTH];
+	int pos = 0;
+	
+	included_files[cur_include] = strdup(inp_fname);
+	
+	while(!feof(file))
+	{
+		last = fgetc(file);
+
+		if(last == '$')
+		{
+			last = fgetc(file);
+			
+			while(last != '$')
+			{
+				fname_buf[pos] = last;
+				last = fgetc(file);
+				pos += 1;
+				fname_buf[pos] = '\0';
+			}
+				
+			if(!included_previously(fname_buf))
+			{
+				printf("filename: %s\n", fname_buf);
+			
+				included_files[cur_include] = strdup(fname_buf);
+				++cur_include;
+				char* file_as_buf = get_file_as_string(fname_buf);
+				fname_buf[0] = '\0';
+			
+				fputs(file_as_buf, output);
+				printf("file buf: %s\n", file_as_buf);
+				free(file_as_buf);
+			}
+			else
+				printf("included previously: %s\n", fname_buf); 
+		}
+		else
+			fputc(last, output);
+		pos = 0;
+	}
+	
+	fclose(file);
+	fclose(output);
+	return 0;
+}
+
+void free_all_allocs()
+{
+	unsigned int i; for(i = 0; i < MAX_INCLUDE_AMT; i++)
+	{
+		if(!included_files[i]) continue;
+		else free(included_files[i]);
+	}
+	remove("temp_out");
+}
+
 int main(int argc, char* argv[])
 {
 	if(argc == 3)
 	{
-		FILE* file = fopen(argv[1], "r");
-		FILE* output = fopen(argv[2], "w");
-		if(!file)
-		{
-			fprintf(stderr, "ERROR: Supplied file is invalid.\n");
-			return 1;
-		}
-		
-		if(!output)
-		{
-			fprintf(stderr, "ERROR: Not able to create output file.\n");
-			return 1;
-		}
-		
 		unsigned int i; for(i = 0; i < MAX_INCLUDE_AMT; i++)
 			included_files[i] = NULL;
-		
-		int last = ' ';
-		char fname_buf[MAX_FILENAME_LENGTH];
-		int pos = 0;
-		int cur_include = 0;
-		
-		while(!feof(file))
+		if(!process_file(argv[1], argv[2]))
 		{
-			last = fgetc(file);
-
-			if(last == '$')
-			{
-				last = fgetc(file);
-				
-				while(last != '$')
-				{
-					fname_buf[pos] = last;
-					last = fgetc(file);
-					pos += 1;
-					fname_buf[pos] = '\0';
-				}
-					
-				if(!included_previously(fname_buf))
-				{
-					printf("filename: %s\n", fname_buf);
-				
-					included_files[cur_include] = strdup(fname_buf);
-					++cur_include;
-					char* file_as_buf = get_file_as_string(fname_buf);
-					fname_buf[0] = '\0';
-				
-					fputs(file_as_buf, output);
-					printf("file buf: %s\n", file_as_buf);
-					free(file_as_buf);
-				}
-				else
-					printf("included previously: %s\n", fname_buf); 
-			}
-			else
-				fputc(last, output);
-			pos = 0;
+			free_all_allocs();
+			return 1;
 		}
-		
-		fclose(file);
-		fclose(output);
+		free_all_allocs();
 	}
 	else
 	{
