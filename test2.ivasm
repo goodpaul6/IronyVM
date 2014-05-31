@@ -1,0 +1,66 @@
+jmp @main
+
+; stdlib.ivasm - a group of functions standard within the irony assembler ;
+; provides wrapper for vm calls ;
+
+; allocates reg 241 bytes and stores it in register denoted by reg 240 ;
+alloc:
+	alc 240 241
+	jbk
+
+; frees data stored from memory location denoted by reg 240 ;
+free:
+	fre 240
+	jbk
+
+
+; puts a newline character onto stdout ;
+newl:
+	ldi 230 0
+	ldi 231 10
+	cal 230 231 0
+	jbk
+
+; puts a character denoted by value in register 240 onto stdout ;
+putc:
+	ldi 230 0
+	cal 230 240 0
+	jbk
+
+; prints a string at memory location denoted by register 240 ;
+puts:
+	ldi 230 1
+	cal 230 240 0 
+	jbk
+	
+; prints a string at memory location denoted by register 240 to length denoted by register 241 ;
+putsl:
+	ldi 230 2
+	cal 230 240 241
+	jbk
+	
+; gets a string of size denoted by register 241 and places it into memory location denoted by register 240 ;
+getsl:
+	ldi 230 3
+	cal 230 240 241
+	jbkÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ
+
+main:
+	ldi 0 10
+	ldi 1 1
+	loop:
+		prt 0
+		sub 0 0 1
+		jmp @newl
+		jmf 0 @last
+		
+	ldi 0 20
+	ldi 1 1
+	
+	loop:
+		prt 0
+		sub 0 0 1
+		jmp @newl
+		jmf 0 @last
+		
+	hltÿ

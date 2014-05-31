@@ -12,6 +12,7 @@ FILE* output_file = NULL;
 char temp_buffer[MAX_STR];
 char* labels[MAX_LABEL];
 int last_reg = 0;
+int line_no = 1;
 static int last = ' ';
 
 int open_files(const char* inp, const char* out)
@@ -50,16 +51,39 @@ int open_files(const char* inp, const char* out)
 	last = ' ';
 }
 
+int get_last_label_index()
+{
+	unsigned int most_recent_label_index = -1;
+	unsigned int i; for(i = 0; i < instr_number; i++)
+	{
+		if(labels[i])
+			most_recent_label_index = i;
+	}
+	
+	if(most_recent_label_index == -1)
+	{
+		fprintf(stderr, "ERROR: Attempted to jump to last label but no label exists!\n");
+		abort();
+	}
+	
+	return most_recent_label_index;
+}
+
 int get_instr_value_from_label(const char* label)
 {
+	unsigned int recent = -1;
 	unsigned int i; for(i = 0; i < MAX_LABEL; i++)
 	{
 		if(labels[i])
 			if(strcmp(labels[i], label) == 0)
-				return i;
+				recent = i;
 	}
-	printf("WARNING: There was an attempt to jump at a non existent label '%s'", label);
-	return 0;
+	if(recent == -1)
+	{	
+		printf("WARNING: There was an attempt to jump at a non existent label '%s'\n", label);
+		recent = 0;
+	}
+	return recent;
 }
 
 void output_string()
@@ -90,8 +114,11 @@ void output_string()
 int read_token()
 {
 	while(isspace(last))
+	{
+		if(last == '\n' || last == '\r') 
+			++line_no;
 		last = fgetc(input_file);
-
+	}
 	if(last == ';')
 	{
 		last = fgetc(input_file);
@@ -141,6 +168,7 @@ int read_token()
 			pos += 1;
 			temp_buffer[pos] = '\0';
 		}
+		
 		token_value.tok = TOK_LABEL_REF;
 		token_value.instr_num = instr_number;
 		if(token_value.str)
@@ -203,6 +231,11 @@ int read_token()
 		return read_token();
 	else if(feof(input_file))
 		return 0;
+	else
+	{
+		last = fgetc(input_file);
+		return read_token();
+	}
 	return 1;
 }
 
@@ -343,7 +376,11 @@ void parse_and_convert()
 			if(strcmp(token_value.str, JMP_INSTR) == 0)
 			{
 				read_token();
-				int esp = get_instr_value_from_label(token_value.str);
+				int esp = 0;
+				if(strcmp(token_value.str, "last") == 0)
+					esp = get_last_label_index();
+				else
+					esp = get_instr_value_from_label(token_value.str);
 				fprintf(output_file, "%02x%06x\n", JMP, esp);
 			}
 
@@ -352,7 +389,11 @@ void parse_and_convert()
 				read_token();
 				int r1 = token_value.val;
 				read_token();
-				int esp = get_instr_value_from_label(token_value.str);
+				int esp = 0;
+				if(strcmp(token_value.str, "last") == 0)
+					esp = get_last_label_index();
+				else
+					esp = get_instr_value_from_label(token_value.str);
 				fprintf(output_file, "%02x%02x%04x\n", JMPF, r1, esp);
 			}
 
