@@ -4,12 +4,12 @@
 #define MAX_JUMP_DEPTH	0xFFFF
 
 /* masks used to extract instruction values */
-#define INSTR_MASK	0xF000
-#define REG1_MASK	0x0F00
-#define REG2_MASK	0x00F0
-#define REG3_MASK	0x000F
-#define IMMVL_MASK	0x00FF
-#define LIMMVL_MASK	0x0FFF
+#define INSTR_MASK	0xFF000000
+#define REG1_MASK	0x00FF0000
+#define REG2_MASK	0x0000FF00
+#define REG3_MASK	0x000000FF
+#define IMMVL_MASK	0x0000FFFF
+#define LIMMVL_MASK	0x00FFFFFF
 
 /* instruction defines */
 #define HALT		0x0
@@ -27,10 +27,10 @@
 #define JBO			0xC
 
 /* instruction encoding macros */
-#define ENCODE_IRVV(instr, reg, immv)			((instr) << 12 | (reg) << 8 | (immv))
-#define ENCODE_IRRR(instr, reg1, reg2, reg3)	((instr) << 12 | (reg1) << 8 | (reg2) << 4 | (reg3))
-#define ENCODE_IVVV(instr, immv)				((instr) << 12 | (immv))
-#define ENCODE_IR00(instr, reg)					((instr) << 12 | (reg) << 8)
+#define ENCODE_IRVV(instr, reg, immv)			((instr) << 24 | (reg) << 20 | (immv))
+#define ENCODE_IRRR(instr, reg1, reg2, reg3)	((instr) << 24 | (reg1) << 20 | (reg2) << 8 | (reg3))
+#define ENCODE_IVVV(instr, immv)				((instr) << 24 | (immv))
+#define ENCODE_IR00(instr, reg)					((instr) << 24 | (reg) << 20)
 
 /* number of registers */
 #define NUM_REGS 	0xF
