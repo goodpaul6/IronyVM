@@ -13,19 +13,19 @@
 #define LIMMVL_MASK	0x00FFFFFF
 
 /* instruction defines */
-#define HALT		0x0
-#define LOADI		0x1
-#define LOADR		0x2
-#define ADD			0x3
-#define SUB			0x4
-#define MUL			0x5
-#define DIV			0x6
-#define NEG 		0x7
-#define PRT			0x8
-#define PRTC		0x9
-#define JMP			0xA
-#define JMF			0xB
-#define JBO			0xC
+#define HALT		0x00
+#define LOADI		0x01
+#define LOADR		0x02
+#define ADD			0x03
+#define SUB			0x04
+#define MUL			0x05
+#define DIV			0x06
+#define NEG 		0x07
+#define PRT			0x08
+#define PRTC		0x09
+#define JMP			0x0A
+#define JMF			0x0B
+#define JBO			0x0C
 
 /* instruction encoding macros */
 #define ENCODE_IRVV(instr, reg, immv)			((instr) << 24 | (reg) << 20 | (immv))
@@ -312,15 +312,16 @@ void lvm_load(lvm_t* vm, word_t* program, int should_free)
 }
 
 // read a program from a file into the vm
-void lvm_read(lvm_t* vm, const char* filename)
+int lvm_read(lvm_t* vm, const char* filename)
 {
-	if(vm->running) return;
-	if(!lvm_prg_ldr_loadf(&vm->loader, filename)) return;
+	if(vm->running) return 0;
+	if(!lvm_prg_ldr_loadf(&vm->loader, filename)) return 0;
 	word_t* program = lvm_prg_ldr_read(&vm->loader);
-	if(!program) return;
+	if(!program) return 0;
 	lvm_reset(vm);
 	vm->program = program;
 	vm->should_free = 1;
+	return 1;
 }
 
 // run the currently loaded program on the vm
@@ -341,20 +342,28 @@ int lvm_run(lvm_t* vm)
 	return vm->result;
 }
 
+// close the vm
+void lvm_close(lvm_t* vm)
+{
+	lvm_reset(vm);
+}
+
 int main(int argc, char* argv[])
 {
-	word_t prog[] = 
+	if(argc == 2)
 	{
-		ENCODE_IRVV(LOADI, 0, 10),
-		ENCODE_IVVV(JMP, 3),
-		ENCODE_IR00(HALT, 0),
-		ENCODE_IR00(PRT, 0),
-		ENCODE_IRVV(LOADI, 0, 0),
-		ENCODE_IVVV(JBO, 3)
-	};
+		lvm_t vm;
+		lvm_init(&vm);
+		if(!lvm_read(&vm, argv[1]))
+		{
+			fprintf(stderr, "ERROR: Could not read file\n");
+			return 1;
+		}
+		int res = lvm_run(&vm);
+		lvm_close(&vm);
+		return res;
+	}
 
-	lvm_t vm;
-	lvm_init(&vm);
-	lvm_load(&vm, prog, 0);
-	return lvm_run(&vm);
+	fprintf(stderr, "ERROR: Invalid command line arguments (lvm program.path.here)\n");
+	return 1;
 }
