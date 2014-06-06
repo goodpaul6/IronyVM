@@ -1,54 +1,51 @@
-#include <stdio.h>
+#include "lvm.h"
+
 #include <stdlib.h>
 
-/* maximum jump depth */
-#define MAX_JUMP_DEPTH	0xFF
-
-/* masks used to extract instruction values */
-#define INSTR_MASK	0xFF000000
-#define REG1_MASK	0x00FF0000
-#define REG2_MASK	0x0000FF00
-#define REG3_MASK	0x000000FF
-#define IMMVL_MASK	0x0000FFFF
-#define LIMMVL_MASK	0x00FFFFFF
-
-/* instruction defines */
-#define HALT		0x00
-#define LOADI		0x01
-#define LOADR		0x02
-#define ADD			0x03
-#define SUB			0x04
-#define MUL			0x05
-#define DIV			0x06
-#define NEG 		0x07
-#define PRT			0x08
-#define PRTC		0x09
-#define JMP			0x0A
-#define JMF			0x0B
-#define JBO			0x0C
-
-/* instruction encoding macros */
-#define ENCODE_IRVV(instr, reg, immv)			((instr) << 24 | (reg) << 20 | (immv))
-#define ENCODE_IRRR(instr, reg1, reg2, reg3)	((instr) << 24 | (reg1) << 20 | (reg2) << 8 | (reg3))
-#define ENCODE_IVVV(instr, immv)				((instr) << 24 | (immv))
-#define ENCODE_IR00(instr, reg)					((instr) << 24 | (reg) << 20)
-
-/* number of registers */
-#define NUM_REGS 	0xF
-
-/* size of each instruction in characters */
-#define INSTR_CHAR_LENGTH	0x8
-
-/* word typedef */
-typedef int word_t;
-
-// program loader
-typedef struct
+// initialize the vm's c interface module
+void lvm_cint_init(lvm_cint_t* interface)
 {
-	FILE* input_file;	// input file pointer
-	char read_buf[9];	// buffer in which the instruction will be stored
-	int last_char;		// last character read
-} lvm_prg_ldr_t;
+	unsigned int i;
+	for(i = 0; i < MAX_BIND_AMT; i++)
+	{
+		interface->occupied[i] = 0;
+		interface->bound_functions[i] = NULL;
+	}
+}
+
+// bind a function to the vm (returns true if successful)
+int lvm_cint_bind(lvm_cint_t* interface, lvm_cint_fn fn, size_t id)
+{
+	if(id >= MAX_BIND_AMT) return 0;
+	if(interface->occupied[id]) return 0;
+
+	interface->bound_functions[id] = fn;
+	interface->occupied[id] = 1;
+
+	return 1;
+}
+
+// overwrite a previously bound function, if no previous function was bound, no overwrite occurs (returns true if successful)
+int lvm_cint_overbind(lvm_cint_t* interface, lvm_cint_fn fn, size_t id)
+{
+	if(id >= MAX_BIND_AMT) return 0;
+	if(!interface->occupied[id]) return 0;
+
+	interface->bound_functions[id] = fn;
+
+	return 1;
+}
+
+// call a bound function (does nothing if function doesn't exist)
+void lvm_cint_call(lvm_cint_t* interface, lvm_t* vm, size_t id)
+{
+	if(id >= MAX_BIND_AMT) return;
+	if(!interface->occupied[id]) return;
+
+	if(!interface->bound_functions[id]) return;
+
+	interface->bound_functions[id](vm);
+}
 
 // initialize the vm program loader
 void lvm_prg_ldr_init(lvm_prg_ldr_t* ldr)
@@ -107,14 +104,6 @@ word_t* lvm_prg_ldr_read(lvm_prg_ldr_t* ldr)
 	return program;
 }
 
-// jump table
-typedef struct
-{
-	size_t jmpfrom_locations[MAX_JUMP_DEPTH];	// locations jumped from
-	size_t jmpto_locations[MAX_JUMP_DEPTH];		// locations jumped to
-	size_t current_jmp_lvl;						// current jump lvl
-} lvm_jmp_t;
-
 // initialize a jump table
 void lvm_jmp_init(lvm_jmp_t* jmp)
 {
@@ -150,27 +139,6 @@ size_t lvm_jmp_back(lvm_jmp_t* jmp, size_t pc)
 	return -1;	// the pc passed in was never jumped to
 }
 
-// machine struct
-typedef struct
-{
-	size_t pc;				// program counter
-	int regs[NUM_REGS];		// registers for storing values
-	int instr_num;			// instruction argument
-	int reg1;				// register argument 1
-	int reg2;				// register argument 2
-	int reg3;				// register argument 3
-	int immd;				// immediate value
-	int limd;				// long immediate value
-	word_t* program;		// 0-terminated program array
-	int current;			// current instruction
-	int running;			// is the vm running
-	int result;				// resulting value (i.e main return value)
-	int should_free;		// whether the program should be freed from memory upon completion
-	int debug;				// whether to debug the instructions
-	lvm_prg_ldr_t loader;	// program loader (from file)
-	lvm_jmp_t jmp_table;	// jump/branch table
-} lvm_t;
-
 // initialize a vm 
 void lvm_init(lvm_t* vm)
 {
@@ -188,6 +156,7 @@ void lvm_init(lvm_t* vm)
 	vm->debug = 0;
 	lvm_prg_ldr_init(&vm->loader);
 	lvm_jmp_init(&vm->jmp_table);
+	lvm_cint_init(&vm->cint);
 }
 
 // fetch and store the current instruction within the vm's loaded program
@@ -285,6 +254,20 @@ void lvm_eval(lvm_t* vm)
 	}
 }
 
+// binds a c function to the lvm (warning supplied if unsuccessful)
+void lvm_bind(lvm_t* vm, lvm_cint_fn fn, size_t id)
+{
+	if(!lvm_cint_bind(&vm->cint, fn, id))
+		fprintf(stderr, "WARNING: Attempt to bind function to id [%u] failed!\n", id);
+}
+
+// overwrites a previously bound function in the lvm (warning supplied if unsuccessful)
+void lvm_overbind(lvm_t* vm, lvm_cint_fn fn, size_t id)
+{
+	if(!lvm_cint_overbind(&vm->cint, fn, id))
+		fprintf(stderr, "WARNING: Attempt to bind over a function bound at id [%u] failed!\n", id);
+}
+
 // resets a vm so that no program is loaded (if a program is loaded)
 void lvm_reset(lvm_t* vm)
 {
@@ -354,7 +337,9 @@ int main(int argc, char* argv[])
 	{
 		lvm_t vm;
 		lvm_init(&vm);
-		if(!lvm_read(&vm, argv[1]))
+		if(argv[1][0] == '-')
+			lvm_setdbg(&vm, 1);
+		if(!lvm_read(&vm, (argv[1][0] == '-') ? (++argv[1]) : argv[1]))
 		{
 			fprintf(stderr, "ERROR: Could not read file\n");
 			return 1;
