@@ -12,32 +12,42 @@
 
 /* masks used to extract instruction values */
 #define INSTR_MASK	0xFF000000
-#define REG1_MASK	0x00FF0000
-#define REG2_MASK	0x0000FF00
-#define REG3_MASK	0x000000FF
-#define IMMVL_MASK	0x0000FFFF
+#define REG1_MASK	0x00F00000
+#define REG2_MASK	0x000F0000
+#define REG3_MASK	0x0000F000
+#define IMMVL_MASK	0x000FFFFF
 #define LIMMVL_MASK	0x00FFFFFF
 
 /* instruction defines */
 #define HALT		0x00
-#define LOADI		0x01
-#define LOADR		0x02
-#define ADD			0x03
-#define SUB			0x04
-#define MUL			0x05
-#define DIV			0x06
-#define NEG 		0x07
-#define PRT			0x08
-#define PRTC		0x09
-#define JMP			0x0A
-#define JMF			0x0B
-#define JBO			0x0C
+#define MOV			0x01
+#define ADD			0x02
+#define SUB			0x03
+#define MUL			0x04
+#define DIV			0x05
+#define NEG 		0x06
+#define PRT			0x07
+#define PRTC		0x08
+#define JMP			0x09
+#define JNZ			0x0A
+#define JZ			0x0B
+#define JNE			0x0C
+#define JE 			0x0D
+#define JGT			0x0E
+#define JLT 		0x0F
+#define JGE			0x10
+#define JLE 		0x11
+#define CMP 		0x12
+#define RET 		0x13
+#define MOVR		0x14
 
 /* instruction encoding macros */
-#define ENCODE_IRVV(instr, reg, immv)			((instr) << 24 | (reg) << 20 | (immv))
-#define ENCODE_IRRR(instr, reg1, reg2, reg3)	((instr) << 24 | (reg1) << 20 | (reg2) << 8 | (reg3))
-#define ENCODE_IVVV(instr, immv)				((instr) << 24 | (immv))
-#define ENCODE_IR00(instr, reg)					((instr) << 24 | (reg) << 20)
+#define ENCODE_IRVV(instr, reg, immv)					((instr) << 24 | (reg) << 20 | (immv))
+#define ENCODE_IRR0(instr, reg1, reg2)					((instr) << 24 | (reg1) << 20 | (reg2) << 16)
+#define ENCODE_IRRR0(instr, reg1, reg2, reg3)			((instr) << 24 | (reg1) << 20 | (reg2) << 16 | (reg3) << 12)
+#define ENCODE_IRRRV(instr, reg1, reg2, reg3, immv)		((instr) << 24 | (reg1) << 20 | (reg2) << 16 | (reg3) << 12 | (immv))
+#define ENCODE_IVVV(instr, immv)						((instr) << 24 | (immv))
+#define ENCODE_IR00(instr, reg)							((instr) << 24 | (reg) << 20)
 
 /* number of registers */
 #define NUM_REGS 	0xF
@@ -83,7 +93,9 @@ typedef struct lvm_jmp
 typedef struct lvm
 {
 	size_t pc;				// program counter
-	int regs[NUM_REGS];		// registers for storing values
+	intptr_t cmp1;			// comparison value 1
+	intptr_t cmp2;			// comparison value 2
+	intptr_t regs[NUM_REGS];		// registers for storing values
 	int instr_num;			// instruction argument
 	int reg1;				// register argument 1
 	int reg2;				// register argument 2

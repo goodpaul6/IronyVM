@@ -170,9 +170,9 @@ void lvm_fetch(lvm_t* vm)
 void lvm_decode(lvm_t* vm)
 {
 	vm->instr_num = (vm->current & INSTR_MASK) >> 24;
-	vm->reg1 = (vm->current & REG1_MASK) >> 16;
-	vm->reg2 = (vm->current & REG2_MASK) >> 8;
-	vm->reg3 = (vm->current & REG3_MASK);
+	vm->reg1 = (vm->current & REG1_MASK) >> 20;
+	vm->reg2 = (vm->current & REG2_MASK) >> 16;
+	vm->reg3 = (vm->current & REG3_MASK) >> 12;
 	vm->immd = (vm->current & IMMVL_MASK);
 	vm->limd = (vm->current & LIMMVL_MASK);
 }
@@ -186,15 +186,10 @@ void lvm_eval(lvm_t* vm)
 		vm->running = 0;
 		vm->result = vm->regs[vm->reg1];
 		break;
-	case LOADI:
+	case MOV:
 		if(vm->debug)
-			printf("loadi\n");
+			printf("mov\n");
 		vm->regs[vm->reg1] = vm->immd;
-		break;
-	case LOADR:
-		if(vm->debug)
-			printf("loadr\n");
-		vm->regs[vm->reg1] = vm->regs[vm->reg2];
 		break;
 	case ADD:
 		if(vm->debug)
@@ -237,19 +232,92 @@ void lvm_eval(lvm_t* vm)
 		lvm_jmp_jump(&vm->jmp_table, vm->pc, vm->limd);
 		vm->pc = vm->limd;
 		break;
-	case JMF:
+	case JNZ:
 		if(vm->debug)
-			printf("jmf\n");
-		if(vm->regs[vm->reg1] == 0)
+			printf("jnz\n");
+		if(vm->regs[reg1] != 0)
 		{
-			lvm_jmp_jump(&vm->jmp_table, vm->pc, vm->limd);
+			lvm_jmp_jump(&vm->jmp_table, vm->pc, vm->immd);
+			vm->pc = vm->immd;
+		}
+	case JZ:
+		if(vm->debug)
+			printf("jz\n");
+		if(vm->regs[reg1] == 0)
+		{
+			lvm_jmp_jump(&vm->jmp_table, vm->pc, vm->immd);
 			vm->pc = vm->immd;
 		}
 		break;
-	case JBO:
+	case JNE:
+		if(vm->debug)
+			printf("jne\n");
+		if(vm->cmp1 != vm->cmp2)
+		{
+			lvm_jmp_jump(&vm->jmp_table, vm->pc, vm->limd);
+			vm->pc = vm->limd;
+		}
+		break;
+	case JE:
+		if(vm->debug)
+			printf("je\n");
+		if(vm->cmp1 == vm->cmp2)
+		{
+			lvm_jmp_jump(&vm->jmp_table, vm->pc, vm->limd);
+			vm->pc = vm->limd;
+		}
+		break;
+	case JGT:
+		if(vm->debug)
+			printf("jgt\n");
+		if(vm->cmp1 > vm->cmp2)
+		{
+			lvm_jmp_jump(&vm->jmp_table, vm->pc, vm->limd);
+			vm->pc = vm->limd;
+		}
+		break;
+	case JLT:
+		if(vm->debug)
+			printf("jlt\n");
+		if(vm->cmp1 < vm->cmp2)
+		{
+			lvm_jmp_jump(&vm->jmp_table, vm->pc, vm->limd);
+			vm->pc = vm->limd;
+		}
+		break;
+	case JGE:
+		if(vm->debug)
+			printf("jge\n");
+		if(vm->cmp1 >= vm->cmp2)
+		{
+			lvm_jmp_jump(&vm->jmp_table, vm->pc, vm->limd);
+			vm->pc = vm->limd;
+		}
+		break;
+	case JLE:
+		if(vm->debug)
+			printf("jle\n");
+		if(vm->cmp1 <= vm->cmp2)
+		{
+			lvm_jmp_jump(&vm->jmp_table, vm->pc, vm->limd);
+			vm->pc = vm->limd;
+		}
+		break;
+	case CMP:
+		if(vm->debug)
+			printf("cmp\n");
+		vm->cmp1 = vm->regs[reg1];
+		vm->cmp2 = vm->regs[reg2];
+		break;
+	case RET:
 		if(vm->debug)
 			printf("jbo\n");
 		vm->pc = lvm_jmp_back(&vm->jmp_table, vm->limd);
+		break;
+	case MOVR:
+		if(vm->debug)
+			printf("movr\n");
+		vm->regs[vm->reg1] = vm->regs[vm->reg2];
 		break;
 	}
 }
