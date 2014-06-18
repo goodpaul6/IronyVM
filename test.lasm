@@ -1,3 +1,36 @@
-start:
-mov %eax 0
-hlt %eax
+main:
+	jmp @countToTen
+
+	mov %eax '\0'
+	push %eax
+	mov %eax 'o'
+	push %eax
+	mov %eax 'l'
+	push %eax
+	mov %eax 'l'
+	push %eax
+	mov %eax 'e'
+	push %eax
+	mov %eax 'h'
+	push %eax
+	jmp @print_all
+	hlt %erx
+
+; this is a function which prints all arguments as characters until a 0 is encountered ;
+print_all:
+	pop %eax
+	ptc %eax
+	jnz %eax @print_all
+	ret @print_all
+
+; this is a comment ;
+countToTen:
+	mov %ecx 10
+	mov %gr1 1
+	mov %gr2 10
+countToTenLoop:
+	prt %ecx
+	ptc %gr2
+	sub %ecx %ecx %gr1
+	jnz %ecx @countToTenLoop
+	ret @countToTen

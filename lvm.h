@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdio.h>
+#include <stdint.h>
 
 /* maximum jump depth */
 #define MAX_JUMP_DEPTH	0xFF
@@ -10,11 +11,15 @@
 /* maximum amount of bound c functions */
 #define MAX_BIND_AMT	0xFFFF
 
+/* maximum stack depth */
+#define MAX_STACK_DEPTH	0xFF
+
 /* masks used to extract instruction values */
 #define INSTR_MASK	0xFF000000
 #define REG1_MASK	0x00F00000
 #define REG2_MASK	0x000F0000
 #define REG3_MASK	0x0000F000
+#define REG4_MASK	0x00000F00
 #define IMMVL_MASK	0x000FFFFF
 #define LIMMVL_MASK	0x00FFFFFF
 
@@ -40,6 +45,9 @@
 #define CMP 		0x12
 #define RET 		0x13
 #define MOVR		0x14
+#define CALL 		0x15
+#define PUSH		0x16
+#define POP			0x17
 
 /* instruction encoding macros */
 #define ENCODE_IRVV(instr, reg, immv)					((instr) << 24 | (reg) << 20 | (immv))
@@ -59,12 +67,20 @@ struct lvm;
 struct lvm_jmp;
 struct lvm_prg_ldr;
 struct lvm_cint;
+struct lvm_stack;
 
 /* word typedef */
 typedef unsigned int word_t;
 
 /* c function type */
 typedef void(*lvm_cint_fn)(struct lvm*);
+
+// virtual stack
+typedef struct lvm_stack
+{
+	intptr_t values[MAX_STACK_DEPTH];		// stack values
+	size_t position;						// position in the stack (0 indexed)
+} lvm_stack_t;
 
 // c interface system
 typedef struct lvm_cint
@@ -100,9 +116,10 @@ typedef struct lvm
 	int reg1;				// register argument 1
 	int reg2;				// register argument 2
 	int reg3;				// register argument 3
+	int reg4;				// register argument 4
 	int immd;				// immediate value
 	int limd;				// long immediate value
-	word_t* program;		// 0-terminated program array
+	word_t* program;		// halt-terminated program array
 	int current;			// current instruction
 	int running;			// is the vm running
 	int result;				// resulting value (i.e main return value)
@@ -111,9 +128,12 @@ typedef struct lvm
 	lvm_prg_ldr_t loader;	// program loader (from file)
 	lvm_jmp_t jmp_table;	// jump/branch table
 	lvm_cint_t cint;		// c interface module
+	lvm_stack_t stack;		// virtual stack instance
 } lvm_t;
 
 void lvm_close(lvm_t *vm);
+void lvm_push(lvm_t *vm, intptr_t value);
+intptr_t lvm_pop(lvm_t *vm);
 int lvm_run(lvm_t *vm);
 int lvm_read(lvm_t *vm,const char *filename);
 void lvm_load(lvm_t *vm,word_t *program,int should_free);
@@ -125,6 +145,9 @@ void lvm_eval(lvm_t *vm);
 void lvm_decode(lvm_t *vm);
 void lvm_fetch(lvm_t *vm);
 void lvm_init(lvm_t *vm);
+
+void lvm_stack_push(lvm_stack_t *stack,intptr_t value);
+intptr_t lvm_stack_pop(lvm_stack_t *stack);
 
 size_t lvm_jmp_back(lvm_jmp_t *jmp,size_t pc);
 void lvm_jmp_jump(lvm_jmp_t *jmp,size_t current_pc,size_t new_pc);

@@ -1,6 +1,22 @@
 #include "lvm.h"
 
 #include <stdlib.h>
+#include <string.h>
+
+// push a value onto the virtual machine's stack
+void lvm_stack_push(lvm_stack_t* stack, intptr_t value)
+{
+	stack->values[stack->position++] = value;
+}
+
+// pop a value from the virtual machine's stack
+intptr_t lvm_stack_pop(lvm_stack_t* stack)
+{
+	if(stack->position > 0)
+		return stack->values[--stack->position];
+	else
+		return stack->values[stack->position];
+}
 
 // initialize the vm's c interface module
 void lvm_cint_init(lvm_cint_t* interface)
@@ -157,6 +173,7 @@ void lvm_init(lvm_t* vm)
 	lvm_prg_ldr_init(&vm->loader);
 	lvm_jmp_init(&vm->jmp_table);
 	lvm_cint_init(&vm->cint);
+	vm->stack.position = 0;
 }
 
 // fetch and store the current instruction within the vm's loaded program
@@ -173,6 +190,7 @@ void lvm_decode(lvm_t* vm)
 	vm->reg1 = (vm->current & REG1_MASK) >> 20;
 	vm->reg2 = (vm->current & REG2_MASK) >> 16;
 	vm->reg3 = (vm->current & REG3_MASK) >> 12;
+	vm->reg4 = (vm->current & REG4_MASK) >> 8;
 	vm->immd = (vm->current & IMMVL_MASK);
 	vm->limd = (vm->current & LIMMVL_MASK);
 }
@@ -235,15 +253,16 @@ void lvm_eval(lvm_t* vm)
 	case JNZ:
 		if(vm->debug)
 			printf("jnz\n");
-		if(vm->regs[reg1] != 0)
+		if(vm->regs[vm->reg1] != 0)
 		{
 			lvm_jmp_jump(&vm->jmp_table, vm->pc, vm->immd);
 			vm->pc = vm->immd;
 		}
+		break;
 	case JZ:
 		if(vm->debug)
 			printf("jz\n");
-		if(vm->regs[reg1] == 0)
+		if(vm->regs[vm->reg1] == 0)
 		{
 			lvm_jmp_jump(&vm->jmp_table, vm->pc, vm->immd);
 			vm->pc = vm->immd;
@@ -306,8 +325,8 @@ void lvm_eval(lvm_t* vm)
 	case CMP:
 		if(vm->debug)
 			printf("cmp\n");
-		vm->cmp1 = vm->regs[reg1];
-		vm->cmp2 = vm->regs[reg2];
+		vm->cmp1 = vm->regs[vm->reg1];
+		vm->cmp2 = vm->regs[vm->reg2];
 		break;
 	case RET:
 		if(vm->debug)
@@ -318,6 +337,21 @@ void lvm_eval(lvm_t* vm)
 		if(vm->debug)
 			printf("movr\n");
 		vm->regs[vm->reg1] = vm->regs[vm->reg2];
+		break;
+	case CALL:
+		if(vm->debug)
+			printf("call\n");
+		lvm_cint_call(&vm->cint, vm, vm->regs[vm->reg1]);
+		break;
+	case PUSH:
+		if(vm->debug)
+			printf("push\n");
+		lvm_push(vm, vm->regs[vm->reg1]);
+		break;
+	case POP:
+		if(vm->debug)
+			printf("pop\n");
+		vm->regs[vm->reg1] = lvm_pop(vm);
 		break;
 	}
 }
@@ -393,11 +427,53 @@ int lvm_run(lvm_t* vm)
 	return vm->result;
 }
 
+// push a value onto the stack of the vm
+void lvm_push(lvm_t* vm, intptr_t value)
+{
+	lvm_stack_push(&vm->stack, value);
+}
+
+// pop a value from the stack of the vm
+intptr_t lvm_pop(lvm_t* vm)
+{
+	return lvm_stack_pop(&vm->stack);
+}
+
 // close the vm
 void lvm_close(lvm_t* vm)
 {
 	lvm_reset(vm);
 }
+
+// bound functions 
+
+void lvm_fnmalloc(lvm_t* vm)
+{
+	vm->regs[vm->reg2] = (intptr_t)malloc((size_t)vm->reg3);
+}
+
+void lvm_fnfree(lvm_t* vm)
+{
+	free((void*)vm->regs[vm->reg2]);
+}
+
+void lvm_fnset(lvm_t* vm)
+{
+	memset((void*)vm->regs[vm->reg2], (int)vm->regs[vm->reg3], (size_t)vm->regs[vm->reg4]);
+}
+
+void lvm_fnstacktest(lvm_t* vm)
+{
+	size_t stack_pos = vm->stack.position;
+	unsigned int i; for(i = 0; i < stack_pos; i++)
+	{
+		intptr_t value = lvm_pop(vm);
+
+		printf("%i\n", value);
+	}
+}
+
+// end of bound functions
 
 int main(int argc, char* argv[])
 {
@@ -405,6 +481,12 @@ int main(int argc, char* argv[])
 	{
 		lvm_t vm;
 		lvm_init(&vm);
+		
+		lvm_bind(&vm, &lvm_fnmalloc, 0);
+		lvm_bind(&vm, &lvm_fnfree, 1);
+		lvm_bind(&vm, &lvm_fnset, 2);
+		lvm_bind(&vm, &lvm_fnstacktest, 3);
+
 		if(argv[1][0] == '-')
 			lvm_setdbg(&vm, 1);
 		if(!lvm_read(&vm, (argv[1][0] == '-') ? (++argv[1]) : argv[1]))

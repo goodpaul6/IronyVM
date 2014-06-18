@@ -8,7 +8,7 @@
 #define MAX_REGCHARS	4
 
 /* the maximum length of a mnemomic name */
-#define MAX_MNEMCHARS	4
+#define MAX_MNEMCHARS	5
 
 /* maximum token length */
 #define MAX_TOKLEN		256
@@ -17,7 +17,7 @@
 #define NUM_REGS		16
 
 /* mnemonic amount */
-#define NUM_MNEM		0x3
+#define NUM_MNEM		24
 
 /* place this character before register references */
 #define REGISTER_MOD	'%'
@@ -28,6 +28,7 @@ typedef enum
 	OPTYPE_IRVVV,
 	OPTYPE_IRR00,
 	OPTYPE_IRRR0,
+	OPTYPE_IRRRR,
 	OPTYPE_IVVVV,
 	OPTYPE_IR000,
 } lasm_operand_type;
@@ -55,6 +56,15 @@ struct lasm_mnem_s
 	{"jne", 0x0C, OPTYPE_IVVVV},
 	{"je", 0x0D, OPTYPE_IVVVV},
 	{"jgt", 0x0E, OPTYPE_IVVVV},
+	{"jlt", 0x0F, OPTYPE_IVVVV},
+	{"jge", 0x10, OPTYPE_IVVVV},
+	{"jle", 0x11, OPTYPE_IVVVV},
+	{"cmp", 0x12, OPTYPE_IRR00},
+	{"ret", 0x13, OPTYPE_IVVVV},
+	{"movr", 0x14, OPTYPE_IRR00},
+	{"cal", 0x15, OPTYPE_IRRRR},
+	{"push", 0x16, OPTYPE_IR000},
+	{"pop", 0x17, OPTYPE_IR000}
 };
 
 // register struct
@@ -79,7 +89,7 @@ struct lasm_regs_s
 	{"gr1", 12},		
 	{"gr2", 13},		
 	{"gr3", 14}, 		
-	{"gr4", 15},		
+	{"gr4", 15}		
 };
 
 // token type enum
@@ -235,7 +245,7 @@ int lasm_read_token()
 		if(isalpha(lasm.last))
 		{
 			int pos = 0; 
-			while(isalnum(lasm.last))
+			while(isalnum(lasm.last) || lasm.last == '_')
 			{
 				lasm_tokenval.buffer[pos] = lasm.last;
 				++pos;
@@ -285,7 +295,7 @@ int lasm_read_token()
 		{
 			lasm.last = fgetc(lasm.input_file);
 			int pos = 0;
-			while(isalnum(lasm.last))
+			while(isalnum(lasm.last) || lasm.last == '_')
 			{
 				lasm_tokenval.buffer[pos] = lasm.last;
 				++pos;
@@ -294,6 +304,41 @@ int lasm_read_token()
 			}
 			lasm_tokenval.type = TOKEN_INTEGER;
 			lasm_tokenval.integer = lasm_get_pc_from_label(lasm_tokenval.buffer);
+		}
+		else if(lasm.last == '\'')
+		{
+			lasm.last = fgetc(lasm.input_file);
+			if(lasm.last == '\\')
+			{
+				lasm.last = fgetc(lasm.input_file);
+				switch(lasm.last)
+				{
+					case 'n':
+						lasm.last = '\n';
+					break;
+					case 'r':
+						lasm.last = '\r';
+					break;
+					case 't':
+						lasm.last = '\t';
+					break;
+					case '0':
+						lasm.last = '\0';
+					break;
+				}
+			}
+			lasm_tokenval.type = TOKEN_INTEGER;
+			lasm_tokenval.integer = lasm.last;
+			lasm.last= fgetc(lasm.input_file);
+		}
+		else if(lasm.last == ';')
+		{
+			lasm.last = fgetc(lasm.input_file);
+			while(lasm.last != ';' && lasm.last != EOF)
+				lasm.last = fgetc(lasm.input_file);
+			lasm.last = fgetc(lasm.input_file);
+
+			if(lasm.last == EOF) return 0;
 		}
 		else if(lasm.last == EOF) 
 			return 0;
@@ -314,10 +359,7 @@ void lasm_symtable_build()
 	while(parse)
 	{
 		if(lasm_tokenval.type == TOKEN_LABEL)
-		{	
 			lasm_symtable_put_label(lasm_tokenval.buffer, lasm_tokenval.pc);
-			printf("found label: %s\n", lasm_tokenval.buffer);
-		}
 		parse = lasm_read_token();
 	}
 
@@ -389,6 +431,23 @@ int lasm_parse_token()
 			assert(lasm_tokenval.type == TOKEN_REGISTER);
 			uint8_t reg3 = lasm_get_reg(lasm_tokenval.buffer);
 			fprintf(lasm.output_file, "%02x%01x%01x%01x000\n", lasm_mnemdefs[mnem_idx].opcode, reg, reg2, reg3);
+		}
+
+		if(lasm_mnemdefs[mnem_idx].optype == OPTYPE_IRRRR)
+		{
+			lasm_read_token();
+			assert(lasm_tokenval.type == TOKEN_REGISTER);
+			uint8_t reg = lasm_get_reg(lasm_tokenval.buffer);
+			lasm_read_token();
+			assert(lasm_tokenval.type == TOKEN_REGISTER);
+			uint8_t reg2 = lasm_get_reg(lasm_tokenval.buffer);
+			lasm_read_token();
+			assert(lasm_tokenval.type == TOKEN_REGISTER);
+			uint8_t reg3 = lasm_get_reg(lasm_tokenval.buffer);
+			lasm_read_token();
+			assert(lasm_tokenval.type == TOKEN_REGISTER);
+			uint8_t reg4 = lasm_get_reg(lasm_tokenval.buffer);
+			fprintf(lasm.output_file, "%02x%01x%01x%01x%01x00\n", lasm_mnemdefs[mnem_idx].opcode, reg, reg2, reg3, reg4);
 		}
 	}
 	return 1;
