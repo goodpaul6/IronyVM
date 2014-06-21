@@ -1,25 +1,13 @@
 main:
-	jmp @countToTen
-
-	mov %eax '\0'
-	push %eax
-	mov %eax 'o'
-	push %eax
-	mov %eax 'l'
-	push %eax
-	mov %eax 'l'
-	push %eax
-	mov %eax 'e'
-	push %eax
-	mov %eax 'h'
-	push %eax
-	jmp @print_all
-
-	mov %eax '\0'
-	push %eax
-	mov %eax '1'
-	push %eax
-	jmp @print_all
+	mov %eax 10
+	set %eax #x
+	geta %gr2 #x
+	mov %eax 20
+	mov %gr3 1
+	add %gr2 %gr2 %gr3
+	setv %gr2 %eax
+	get %gr1 #x
+	prt %gr1
 	hlt %erx
 
 ; this is a function which prints all arguments as characters until a 0 is encountered ;

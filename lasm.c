@@ -17,10 +17,16 @@
 #define NUM_REGS		16
 
 /* mnemonic amount */
-#define NUM_MNEM		24
+#define NUM_MNEM		0x23
 
 /* place this character before register references */
 #define REGISTER_MOD	'%'
+
+/* max length of a variable name */
+#define MAX_VAR_LENGTH	256
+
+/* max amount of variables */
+#define MAX_VAR_AMT		0xFFFF
 
 /* the operand types */
 typedef enum 
@@ -32,6 +38,13 @@ typedef enum
 	OPTYPE_IVVVV,
 	OPTYPE_IR000,
 } lasm_operand_type;
+
+// variables database
+struct lasm_vars_s
+{
+	char names[MAX_VAR_AMT][MAX_VAR_LENGTH];
+	size_t length;
+} lasm_vars;
 
 // mnemonic struct
 struct lasm_mnem_s
@@ -64,7 +77,12 @@ struct lasm_mnem_s
 	{"movr", 0x14, OPTYPE_IRR00},
 	{"cal", 0x15, OPTYPE_IRRRR},
 	{"push", 0x16, OPTYPE_IR000},
-	{"pop", 0x17, OPTYPE_IR000}
+	{"pop", 0x17, OPTYPE_IR000},
+	{"set", 0x18, OPTYPE_IRVVV},
+	{"setv", 0x19, OPTYPE_IRR00},
+	{"get", 0x20, OPTYPE_IRVVV},
+	{"geta", 0x21, OPTYPE_IRVVV},
+	{"dref", 0x22, OPTYPE_IRR00}
 };
 
 // register struct
@@ -130,6 +148,31 @@ struct
 
 // prototypes
 void lasm_symtable_extend();
+
+// if a variable exists, this returns its index in the hash, otherwise, it creates it
+size_t lasm_variable_get(const char* name, size_t length)
+{
+	int found = 0;
+	size_t index = 0;
+
+	unsigned int i; for(i = 0; i < lasm_vars.length; i++)
+	{
+		if(!strcmp(lasm_vars.names[i], name))
+		{	
+			found = 1;
+			index = i;
+		}
+	}
+
+	if(!found)
+	{
+		index = lasm_vars.length;
+		memcpy(lasm_vars.names[i], name, length * sizeof(char)); 
+		++lasm_vars.length;
+	}
+
+	return index;
+}
 
 // initialize the assembler
 int lasm_init(const char* inp, const char* out)
@@ -327,6 +370,20 @@ int lasm_read_token()
 			}
 			lasm_tokenval.type = TOKEN_INTEGER;
 			lasm_tokenval.integer = lasm_get_pc_from_label(lasm_tokenval.buffer);
+		}
+		else if(lasm.last == '#')
+		{
+			lasm.last = fgetc(lasm.input_file);
+			int pos = 0;
+			while(isalnum(lasm.last) || lasm.last == '_')
+			{
+				lasm_tokenval.buffer[pos] = lasm.last;
+				++pos;
+				lasm_tokenval.buffer[pos] = '\0';
+				lasm.last = fgetc(lasm.input_file);
+			}
+			lasm_tokenval.type = TOKEN_INTEGER;
+			lasm_tokenval.integer = lasm_variable_get(lasm_tokenval.buffer, pos);
 		}
 		else if(lasm.last == '\'')
 		{

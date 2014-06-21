@@ -14,6 +14,9 @@
 /* maximum stack depth */
 #define MAX_STACK_DEPTH	0xFFFF
 
+/* maximum amount of variables */
+#define MAX_VARIABLE_AMT 0xFFFF
+
 /* masks used to extract instruction values */
 #define INSTR_MASK	0xFF000000
 #define REG1_MASK	0x00F00000
@@ -24,30 +27,35 @@
 #define LIMMVL_MASK	0x00FFFFFF
 
 /* instruction defines */
-#define HALT		0x00
-#define MOV			0x01
-#define ADD			0x02
-#define SUB			0x03
-#define MUL			0x04
-#define DIV			0x05
-#define NEG 		0x06
-#define PRT			0x07
-#define PRTC		0x08
-#define JMP			0x09
-#define JNZ			0x0A
-#define JZ			0x0B
-#define JNE			0x0C
-#define JE 			0x0D
-#define JGT			0x0E
-#define JLT 		0x0F
-#define JGE			0x10
-#define JLE 		0x11
-#define CMP 		0x12
-#define RET 		0x13
-#define MOVR		0x14
-#define CALL 		0x15
-#define PUSH		0x16
-#define POP			0x17
+#define HALT		0x00 		// hlt %eax
+#define MOV			0x01 		// mov %eax 10
+#define ADD			0x02 		// add %eax %gr1 %gr2
+#define SUB			0x03 		// sub ...
+#define MUL			0x04 		// mul ...
+#define DIV			0x05 		// div ...
+#define NEG 		0x06 		// neg %eax
+#define PRT			0x07 		// prt %eax
+#define PRTC		0x08 		// ptc %eax
+#define JMP			0x09 		// jmp @label_name_here
+#define JNZ			0x0A 		// jnz %eax @label_name_here
+#define JZ			0x0B 		// jz ...
+#define JNE			0x0C 		// jne @label_name_here
+#define JE 			0x0D 		// je ...
+#define JGT			0x0E 		// jgt ...
+#define JLT 		0x0F 		// jlt ...
+#define JGE			0x10 		// jge ...
+#define JLE 		0x11 		// jle ...
+#define CMP 		0x12 		// cmp %eax %gr1
+#define RET 		0x13 		// ret @label_to_return_from_here
+#define MOVR		0x14 		// movr %eax %gr1 
+#define CALL 		0x15		// call %eax %zero %zero %zero
+#define PUSH		0x16		// push %eax
+#define POP			0x17 		// pop %eax
+#define SET 		0x18		// set %eax #x 
+#define SETV 		0x19		// setv %eax %gr1
+#define GET 		0x20 		// get %eax #x
+#define GETA		0x21 		// geta %eax #x
+#define DREF		0x22 		// dref %eax %gr1
 
 /* instruction encoding macros */
 #define ENCODE_IRVV(instr, reg, immv)					((instr) << 24 | (reg) << 20 | (immv))
@@ -74,6 +82,12 @@ typedef unsigned int word_t;
 
 /* c function type */
 typedef void(*lvm_cint_fn)(struct lvm*);
+
+// database for storing variables
+typedef struct lvm_database
+{
+	intptr_t values[MAX_VARIABLE_AMT];		// variable values
+} lvm_database_t;
 
 // virtual stack
 typedef struct lvm_stack
@@ -129,6 +143,7 @@ typedef struct lvm
 	lvm_jmp_t jmp_table;	// jump/branch table
 	lvm_cint_t cint;		// c interface module
 	lvm_stack_t stack;		// virtual stack instance
+	lvm_database_t db;		// database
 } lvm_t;
 
 void lvm_close(lvm_t *vm);

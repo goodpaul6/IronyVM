@@ -1,0 +1,49 @@
+jmp @main
+
+; addition instruction (pops 2 values off the stack and pushes the result of their addition) ;
+add_instr:
+	pop %gr1
+	pop %gr2
+	mov %eax 0
+	add %eax %gr1 %gr2
+	push %eax
+	ret @add_instr
+
+; subtraction instruction (pops 2 values off the stack and pushes the result of their subtraction) ;
+sub_instr:
+	pop %gr1
+	pop %gr2
+	mov %eax 0
+	sub %eax %gr1 %gr2
+	push %eax
+	ret @sub_instr
+
+; multiplication instruction (pops 2 values off the stack and pushes the result of their multiplication) ;
+mul_instr:
+	pop %gr1
+	pop %gr2
+	mov %eax 0
+	mul %eax %gr1 %gr2
+	push %eax
+	ret @mul_instr
+
+; division instruction (pops 2 values off the stack and pushes the result of their division) ;
+div_instr:
+	pop %gr1
+	pop %gr2
+	mov %eax 0
+	div %eax %gr1 %gr2
+	push %eax
+	ret @div_instr
+
+main:
+	mov %eax 10
+	push %eax
+	mov %eax 20
+	push %eax
+	jmp @add_instr
+	pop %eax
+	prt %eax
+	hlt %zero
+
+

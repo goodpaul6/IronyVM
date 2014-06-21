@@ -353,6 +353,31 @@ void lvm_eval(lvm_t* vm)
 			printf("pop\n");
 		vm->regs[vm->reg1] = lvm_pop(vm);
 		break;
+	case SET:
+		if(vm->debug)
+			printf("set\n");
+		vm->db.values[vm->immd] = vm->regs[vm->reg1];
+		break;
+	case SETV:
+		if(vm->debug)
+			printf("setv\n");
+		*(intptr_t*)(vm->regs[vm->reg1]) = vm->regs[vm->reg2]; 
+		break;
+	case GET:
+		if(vm->debug)
+			printf("get\n");
+		vm->regs[vm->reg1] = vm->db.values[vm->immd];
+		break;
+	case GETA:
+		if(vm->debug)
+			printf("geta\n");
+		vm->regs[vm->reg1] = (intptr_t)(&vm->db.values[vm->immd]);
+		break;
+	case DREF:
+		if(vm->debug)
+			printf("dref\n");
+		vm->regs[vm->reg1] = *(intptr_t*)(vm->regs[vm->reg2]);
+		break;
 	}
 }
 
@@ -462,17 +487,6 @@ void lvm_fnset(lvm_t* vm)
 	memset((void*)vm->regs[vm->reg2], (int)vm->regs[vm->reg3], (size_t)vm->regs[vm->reg4]);
 }
 
-void lvm_fnstacktest(lvm_t* vm)
-{
-	size_t stack_pos = vm->stack.position;
-	unsigned int i; for(i = 0; i < stack_pos; i++)
-	{
-		intptr_t value = lvm_pop(vm);
-
-		printf("%i\n", value);
-	}
-}
-
 // end of bound functions
 
 int main(int argc, char* argv[])
@@ -485,7 +499,6 @@ int main(int argc, char* argv[])
 		lvm_bind(&vm, &lvm_fnmalloc, 0);
 		lvm_bind(&vm, &lvm_fnfree, 1);
 		lvm_bind(&vm, &lvm_fnset, 2);
-		lvm_bind(&vm, &lvm_fnstacktest, 3);
 
 		if(argv[1][0] == '-')
 			lvm_setdbg(&vm, 1);
