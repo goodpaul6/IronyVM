@@ -12,7 +12,7 @@
 #define MAX_BIND_AMT	0xFFFF
 
 /* maximum stack depth */
-#define MAX_STACK_DEPTH	0xFF
+#define MAX_STACK_DEPTH	0xFFFF
 
 /* masks used to extract instruction values */
 #define INSTR_MASK	0xFF000000

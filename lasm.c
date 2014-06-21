@@ -106,7 +106,7 @@ struct lasm_token_s
 {
 	lasm_tokentype type;		// the type of the token
 	char buffer[MAX_TOKLEN];	// the buffer which has a string representation of the token
-	size_t integer;		// if the token was an integer, this holds the integer value of the token
+	intptr_t integer;		// if the token was an integer, this holds the integer value of the token
 	size_t pc;					// location in program
 } lasm_tokenval;
 
@@ -127,7 +127,6 @@ struct
 	FILE* output_file;			// output file
 	int last;					// last character read
 } lasm;
-
 
 // prototypes
 void lasm_symtable_extend();
@@ -230,6 +229,30 @@ void lasm_symtable_extend()
 	}
 }
 
+// handle escape sequences 
+void lasm_handle_escape_seq()
+{
+	if(lasm.last == '\\')
+	{
+		lasm.last = fgetc(lasm.input_file);
+		switch(lasm.last)
+		{
+			case 'n':
+				lasm.last = '\n';
+			break;
+			case 'r':
+				lasm.last = '\r';
+			break;
+			case 't':
+				lasm.last = '\t';
+			break;
+			case '0':
+				lasm.last = '\0';
+			break;
+		}
+	}
+}
+
 // read a token from the assemblers input file
 int lasm_read_token()
 {
@@ -308,25 +331,7 @@ int lasm_read_token()
 		else if(lasm.last == '\'')
 		{
 			lasm.last = fgetc(lasm.input_file);
-			if(lasm.last == '\\')
-			{
-				lasm.last = fgetc(lasm.input_file);
-				switch(lasm.last)
-				{
-					case 'n':
-						lasm.last = '\n';
-					break;
-					case 'r':
-						lasm.last = '\r';
-					break;
-					case 't':
-						lasm.last = '\t';
-					break;
-					case '0':
-						lasm.last = '\0';
-					break;
-				}
-			}
+			lasm_handle_escape_seq();
 			lasm_tokenval.type = TOKEN_INTEGER;
 			lasm_tokenval.integer = lasm.last;
 			lasm.last= fgetc(lasm.input_file);
