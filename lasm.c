@@ -8,7 +8,7 @@
 #define MAX_REGCHARS	4
 
 /* the maximum length of a mnemomic name */
-#define MAX_MNEMCHARS	5
+#define MAX_MNEMCHARS	6
 
 /* maximum token length */
 #define MAX_TOKLEN		256
@@ -17,7 +17,7 @@
 #define NUM_REGS		16
 
 /* mnemonic amount */
-#define NUM_MNEM		0x23
+#define NUM_MNEM		0x27
 
 /* place this character before register references */
 #define REGISTER_MOD	'%'
@@ -75,14 +75,18 @@ struct lasm_mnem_s
 	{"cmp", 0x12, OPTYPE_IRR00},
 	{"ret", 0x13, OPTYPE_IVVVV},
 	{"movr", 0x14, OPTYPE_IRR00},
-	{"cal", 0x15, OPTYPE_IRRRR},
+	{"call", 0x15, OPTYPE_IRRRR},
 	{"push", 0x16, OPTYPE_IR000},
 	{"pop", 0x17, OPTYPE_IR000},
 	{"set", 0x18, OPTYPE_IRVVV},
 	{"setv", 0x19, OPTYPE_IRR00},
 	{"get", 0x20, OPTYPE_IRVVV},
 	{"geta", 0x21, OPTYPE_IRVVV},
-	{"dref", 0x22, OPTYPE_IRR00}
+	{"dref", 0x22, OPTYPE_IRR00},
+	{"asl", 0x23, OPTYPE_IRR00},
+	{"asr", 0x24, OPTYPE_IRR00},
+	{"mask", 0x25, OPTYPE_IRR00},
+	{"pushi", 0x26, OPTYPE_IRVVV}
 };
 
 // register struct
@@ -102,7 +106,7 @@ struct lasm_regs_s
 	{"ea2", 7},			// argument 2
 	{"ea3", 8},			// argument 3
 	{"epv", 9},			// for holding pointer values
-	{"esp", 10},		// stack pointer
+	{"esl", 10},		// stack length
 	{"ecx", 11},		// loop counter
 	{"gr1", 12},		
 	{"gr2", 13},		

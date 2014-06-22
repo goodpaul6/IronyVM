@@ -198,6 +198,8 @@ void lvm_decode(lvm_t* vm)
 // evaluate the currently decoded instruction within the vm
 void lvm_eval(lvm_t* vm)
 {
+	vm->regs[ZERO_REG] = 0;
+	vm->regs[ESL_REG] = vm->stack.position;
 	switch(vm->instr_num)
 	{
 	case HALT:
@@ -378,6 +380,26 @@ void lvm_eval(lvm_t* vm)
 			printf("dref\n");
 		vm->regs[vm->reg1] = *(intptr_t*)(vm->regs[vm->reg2]);
 		break;
+	case ASL:
+		if(vm->debug)
+			printf("asl\n");
+		vm->regs[vm->reg1] <<= vm->regs[vm->reg2];
+		break;
+	case ASR:
+		if(vm->debug)
+			printf("asr\n");
+		vm->regs[vm->reg1] >>= vm->regs[vm->reg2];
+		break;
+	case MASK:
+		if(vm->debug)
+			printf("mask\n");
+		vm->regs[vm->reg1] = vm->regs[vm->reg1] & vm->regs[vm->reg2];
+		break;
+	case PUSHI:
+		if(vm->debug)
+			printf("pushi\n");
+		lvm_push(vm, vm->immd);
+		break;	
 	}
 }
 
@@ -487,6 +509,31 @@ void lvm_fnset(lvm_t* vm)
 	memset((void*)vm->regs[vm->reg2], (int)vm->regs[vm->reg3], (size_t)vm->regs[vm->reg4]);
 }
 
+void lvm_fncpy(lvm_t* vm)
+{
+	memcpy((void*)vm->regs[vm->reg2], (void*)vm->regs[vm->reg3], (size_t)vm->regs[vm->reg4]);
+}
+
+void lvm_fntobyte(lvm_t* vm)
+{
+	vm->regs[vm->reg2] = *(uint8_t*)vm->regs[vm->reg2];
+}
+
+void lvm_fntodbyte(lvm_t* vm)
+{
+	vm->regs[vm->reg2] = *(uint16_t*)vm->regs[vm->reg2];
+}
+
+void lvm_fntoword(lvm_t* vm)
+{
+	vm->regs[vm->reg2] = *(uint32_t*)vm->regs[vm->reg2];
+}
+
+void lvm_fntodword(lvm_t* vm)
+{
+	vm->regs[vm->reg2] = *(uint64_t*)vm->regs[vm->reg2]; 
+}
+
 // end of bound functions
 
 int main(int argc, char* argv[])
@@ -499,6 +546,11 @@ int main(int argc, char* argv[])
 		lvm_bind(&vm, &lvm_fnmalloc, 0);
 		lvm_bind(&vm, &lvm_fnfree, 1);
 		lvm_bind(&vm, &lvm_fnset, 2);
+		lvm_bind(&vm, &lvm_fncpy, 3);
+		lvm_bind(&vm, &lvm_fntobyte, 4);
+		lvm_bind(&vm, &lvm_fntodbyte, 5);
+		lvm_bind(&vm, &lvm_fntoword, 6);
+		lvm_bind(&vm, &lvm_fntodword, 7);
 
 		if(argv[1][0] == '-')
 			lvm_setdbg(&vm, 1);

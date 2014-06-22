@@ -26,6 +26,10 @@
 #define IMMVL_MASK	0x000FFFFF
 #define LIMMVL_MASK	0x00FFFFFF
 
+/* special registers */
+#define ZERO_REG	0x0
+#define ESL_REG		0xA
+
 /* instruction defines */
 #define HALT		0x00 		// hlt %eax
 #define MOV			0x01 		// mov %eax 10
@@ -56,6 +60,10 @@
 #define GET 		0x20 		// get %eax #x
 #define GETA		0x21 		// geta %eax #x
 #define DREF		0x22 		// dref %eax %gr1
+#define ASL			0x23 		// asl %eax %gr1
+#define ASR 		0x24		// asr %eax %gr2
+#define MASK		0x25 		// mask %eax %gr1
+#define PUSHI		0x26 		// pushi 'a'
 
 /* instruction encoding macros */
 #define ENCODE_IRVV(instr, reg, immv)					((instr) << 24 | (reg) << 20 | (immv))
