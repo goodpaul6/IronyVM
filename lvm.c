@@ -401,6 +401,9 @@ void lvm_eval(lvm_t* vm)
 		lvm_push(vm, vm->immd);
 		break;	
 	}
+
+	if(vm->debug)
+		printf("instr performed at pc %u\n", vm->pc);
 }
 
 // binds a c function to the lvm (warning supplied if unsuccessful)

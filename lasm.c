@@ -192,7 +192,6 @@ void lasm_init_symtable()
 // initialize the assembler
 int lasm_init(const char* inp, const char* out, int append, size_t start)
 {
-	printf("writing to file: %s, starting at opcode: %u\n", out, start);
 	lasm.start_pc = start;
 	lasm.input_file = fopen(inp, "r");
 	if(!lasm.input_file) return 0;
@@ -432,8 +431,8 @@ int lasm_read_token()
 	return 0;
 }
 
-// build the symbol table
-void lasm_symtable_build()
+// build the symbol table (optionally move the relocation program counter if reloc_pc is not null)
+void lasm_symtable_build(size_t* reloc_pc)
 {
 	if(!lasm.input_file) return;
 
@@ -443,6 +442,10 @@ void lasm_symtable_build()
 	{
 		if(lasm_tokenval.type == TOKEN_LABEL)
 			lasm_symtable_put_label(lasm_tokenval.buffer, lasm_tokenval.pc);
+		else if(lasm_tokenval.type == TOKEN_INSTR)
+		{
+			if(reloc_pc) *reloc_pc = (*reloc_pc + 1);
+		}
 		parse = lasm_read_token();
 	}
 
@@ -555,15 +558,27 @@ int main(int argc, char* argv[])
 
 		lasm_init_symtable();
 		
+		// build symtable from both files
 		unsigned int i; for(i = 2; i < argc; i++)
 		{
 			lasm_init(argv[i], argv[1], append, reloc_pc);
-			lasm_symtable_build();
+			lasm_symtable_build(&reloc_pc);
+			lasm_close_files();
+		}
+
+		// reset the relocation program counter
+		reloc_pc = 0;
+
+		// output the object files given the symbol data
+		for(i = 2; i < argc; i++)
+		{
+			lasm_init(argv[i], argv[1], append, reloc_pc);
 			while(lasm_parse_token(&reloc_pc));
 			lasm_close_files();
-			
+
 			append = 1;
 		}
+
 		lasm_close();
 		return 0;
 	}

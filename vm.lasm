@@ -1,3 +1,5 @@
+jmp @main
+
 ; addition instruction (pops 2 values off the stack and pushes the result of their addition) ;
 add_instr:
 	pop %gr1

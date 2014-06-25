@@ -1,14 +1,3 @@
-mov %eax 0
-set %eax #fnmalloc
-mov %eax 1
-set %eax #fnfree
-mov %eax 2
-set %eax #fnset
-mov %eax 3
-set %eax #fncpy
-mov %eax 4
-set %eax #fntobyte
-jmp @main
 
 ; allocates %ea1 amount of bytes and places the address into %er1 ;
 malloc:
@@ -98,6 +87,16 @@ stack_to_string:
 	ret @stack_to_string
 
 main:
+	mov %eax 0
+	set %eax #fnmalloc
+	mov %eax 1
+	set %eax #fnfree
+	mov %eax 2
+	set %eax #fnset
+	mov %eax 3
+	set %eax #fncpy
+	mov %eax 4
+	set %eax #fntobyte
 	mov %erx 0
 	pushi '\0'
 	pushi 'o'
