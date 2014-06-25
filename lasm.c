@@ -86,7 +86,7 @@ struct lasm_mnem_s
 	{"asl", 0x23, OPTYPE_IRR00},
 	{"asr", 0x24, OPTYPE_IRR00},
 	{"mask", 0x25, OPTYPE_IRR00},
-	{"pushi", 0x26, OPTYPE_IRVVV}
+	{"pushi", 0x26, OPTYPE_IVVVV}
 };
 
 // register struct
@@ -144,10 +144,12 @@ typedef struct
 // the assembler struct
 struct
 {
-	lasm_symtable_t symbols;	// used for storing and querying labels
-	FILE* input_file;			// input file
-	FILE* output_file;			// output file
-	int last;					// last character read
+	lasm_symtable_t symbols;							// used for storing and querying labels
+	FILE* input_file;									// input file
+	FILE* output_file;									// output file
+	int last;											// last character read
+	int lineno;											// line number
+	size_t start_pc;									// starting pc
 } lasm;
 
 // prototypes
@@ -178,25 +180,33 @@ size_t lasm_variable_get(const char* name, size_t length)
 	return index;
 }
 
-// initialize the assembler
-int lasm_init(const char* inp, const char* out)
+// initialize the assemblers symtable
+void lasm_init_symtable()
 {
-	lasm.input_file = fopen(inp, "r");
-	if(!lasm.input_file) return 0;
-	lasm.output_file = fopen(out, "w");
-	if(!lasm.output_file) return 0;
-	lasm.last = ' ';
-	lasm_tokenval.buffer[0] = '\0';
-	lasm_tokenval.pc = 0;
-	lasm_tokenval.integer = 0;
 	lasm.symbols.length = 0;
 	lasm.symbols.capacity = 2;
 	lasm.symbols.labels = malloc(sizeof(char*) * lasm.symbols.capacity);
 	lasm.symbols.pcs = malloc(sizeof(size_t) * lasm.symbols.capacity);
 }
 
-// close the assembler
-void lasm_close()
+// initialize the assembler
+int lasm_init(const char* inp, const char* out, int append, size_t start)
+{
+	printf("writing to file: %s, starting at opcode: %u\n", out, start);
+	lasm.start_pc = start;
+	lasm.input_file = fopen(inp, "r");
+	if(!lasm.input_file) return 0;
+	lasm.output_file = fopen(out, append ? "a+" : "w+");
+	if(!lasm.output_file) return 0;
+	lasm.last = ' ';
+	lasm_tokenval.buffer[0] = '\0';
+	lasm_tokenval.pc = start;
+	lasm_tokenval.integer = 0;
+	lasm.lineno = 1;
+}
+
+// close the assembler files
+void lasm_close_files()
 {
 	if(lasm.input_file) 
 	{
@@ -209,7 +219,11 @@ void lasm_close()
 		fclose(lasm.output_file);
 		lasm.output_file = NULL;
 	}
+}
 
+// close the assembler
+void lasm_close()
+{
 	unsigned int i; for(i = 0; i < lasm.symbols.length; i++)
 		free(lasm.symbols.labels[i]);
 
@@ -308,7 +322,10 @@ int lasm_read_token()
 		if(feof(lasm.input_file)) return 0;
 
 		while(isspace(lasm.last))
+		{
+			if(lasm.last == '\n' || lasm.last == '\r') ++lasm.lineno;
 			lasm.last = fgetc(lasm.input_file);
+		}
 
 		if(feof(lasm.input_file)) return 0;
 
@@ -431,13 +448,22 @@ void lasm_symtable_build()
 
 	rewind(lasm.input_file);
 	lasm_tokenval.buffer[0] = '\0';
-	lasm_tokenval.pc = 0;
+	lasm_tokenval.pc = lasm.start_pc;
 	lasm_tokenval.integer = 0;
 	lasm.last = ' ';
+	lasm.lineno = 1;
+}
+
+void lasm_expect_token_type(lasm_tokentype type)
+{
+	if(lasm_tokenval.type != type)
+		fprintf(stderr, "ERROR: At line %i\nExpected token type %i, but received %i\n", lasm.lineno, type, lasm_tokenval.type);
+
+	assert(lasm_tokenval.type == type);
 }
 
 // parse a token from the assemblers and spit an opcode into the file
-int lasm_parse_token()
+int lasm_parse_token(size_t* instr)
 {
 	if(!lasm.output_file) return 0;
 
@@ -447,22 +473,23 @@ int lasm_parse_token()
 
 	if(lasm_tokenval.type == TOKEN_INSTR)
 	{
+		*instr = (*instr) + 1;
 		int mnem_idx = lasm_get_mnem(lasm_tokenval.buffer);
 		
 		if(lasm_mnemdefs[mnem_idx].optype == OPTYPE_IRVVV)
 		{
 			lasm_read_token();
-			assert(lasm_tokenval.type == TOKEN_REGISTER);
+			lasm_expect_token_type(TOKEN_REGISTER);
 			uint8_t reg = lasm_get_reg(lasm_tokenval.buffer);
 			lasm_read_token();
-			assert(lasm_tokenval.type == TOKEN_INTEGER);
+			lasm_expect_token_type(TOKEN_INTEGER);
 			fprintf(lasm.output_file, "%02x%01x%05x\n", lasm_mnemdefs[mnem_idx].opcode, reg, lasm_tokenval.integer);
 		}
 
 		if(lasm_mnemdefs[mnem_idx].optype == OPTYPE_IR000)
 		{
 			lasm_read_token();
-			assert(lasm_tokenval.type == TOKEN_REGISTER);
+			lasm_expect_token_type(TOKEN_REGISTER);
 			uint8_t reg = lasm_get_reg(lasm_tokenval.buffer);
 			fprintf(lasm.output_file, "%02x%01x00000\n", lasm_mnemdefs[mnem_idx].opcode, reg);
 		}
@@ -470,17 +497,17 @@ int lasm_parse_token()
 		if(lasm_mnemdefs[mnem_idx].optype == OPTYPE_IVVVV)
 		{
 			lasm_read_token();
-			assert(lasm_tokenval.type == TOKEN_INTEGER);
+			lasm_expect_token_type(TOKEN_INTEGER);
 			fprintf(lasm.output_file, "%02x%06x\n", lasm_mnemdefs[mnem_idx].opcode, lasm_tokenval.integer);
 		}
 
 		if(lasm_mnemdefs[mnem_idx].optype == OPTYPE_IRR00)
 		{
 			lasm_read_token();
-			assert(lasm_tokenval.type == TOKEN_REGISTER);
+			lasm_expect_token_type(TOKEN_REGISTER);
 			uint8_t reg = lasm_get_reg(lasm_tokenval.buffer);
 			lasm_read_token();
-			assert(lasm_tokenval.type == TOKEN_REGISTER);
+			lasm_expect_token_type(TOKEN_REGISTER);
 			uint8_t reg2 = lasm_get_reg(lasm_tokenval.buffer);
 			fprintf(lasm.output_file, "%02x%01x%01x0000\n", lasm_mnemdefs[mnem_idx].opcode, reg, reg2);
 		}
@@ -488,13 +515,13 @@ int lasm_parse_token()
 		if(lasm_mnemdefs[mnem_idx].optype == OPTYPE_IRRR0)
 		{
 			lasm_read_token();
-			assert(lasm_tokenval.type == TOKEN_REGISTER);
+			lasm_expect_token_type(TOKEN_REGISTER);
 			uint8_t reg = lasm_get_reg(lasm_tokenval.buffer);
 			lasm_read_token();
-			assert(lasm_tokenval.type == TOKEN_REGISTER);
+			lasm_expect_token_type(TOKEN_REGISTER);
 			uint8_t reg2 = lasm_get_reg(lasm_tokenval.buffer);
 			lasm_read_token();
-			assert(lasm_tokenval.type == TOKEN_REGISTER);
+			lasm_expect_token_type(TOKEN_REGISTER);
 			uint8_t reg3 = lasm_get_reg(lasm_tokenval.buffer);
 			fprintf(lasm.output_file, "%02x%01x%01x%01x000\n", lasm_mnemdefs[mnem_idx].opcode, reg, reg2, reg3);
 		}
@@ -502,16 +529,16 @@ int lasm_parse_token()
 		if(lasm_mnemdefs[mnem_idx].optype == OPTYPE_IRRRR)
 		{
 			lasm_read_token();
-			assert(lasm_tokenval.type == TOKEN_REGISTER);
+			lasm_expect_token_type(TOKEN_REGISTER);
 			uint8_t reg = lasm_get_reg(lasm_tokenval.buffer);
 			lasm_read_token();
-			assert(lasm_tokenval.type == TOKEN_REGISTER);
+			lasm_expect_token_type(TOKEN_REGISTER);
 			uint8_t reg2 = lasm_get_reg(lasm_tokenval.buffer);
 			lasm_read_token();
-			assert(lasm_tokenval.type == TOKEN_REGISTER);
+			lasm_expect_token_type(TOKEN_REGISTER);
 			uint8_t reg3 = lasm_get_reg(lasm_tokenval.buffer);
 			lasm_read_token();
-			assert(lasm_tokenval.type == TOKEN_REGISTER);
+			lasm_expect_token_type(TOKEN_REGISTER);
 			uint8_t reg4 = lasm_get_reg(lasm_tokenval.buffer);
 			fprintf(lasm.output_file, "%02x%01x%01x%01x%01x00\n", lasm_mnemdefs[mnem_idx].opcode, reg, reg2, reg3, reg4);
 		}
@@ -521,11 +548,22 @@ int lasm_parse_token()
 
 int main(int argc, char* argv[])
 {
-	if(argc == 3)
+	if(argc >= 3)
 	{
-		lasm_init(argv[1], argv[2]);
-		lasm_symtable_build();
-		while(lasm_parse_token());
+		int append = 0;
+		size_t reloc_pc = 0;
+
+		lasm_init_symtable();
+		
+		unsigned int i; for(i = 2; i < argc; i++)
+		{
+			lasm_init(argv[i], argv[1], append, reloc_pc);
+			lasm_symtable_build();
+			while(lasm_parse_token(&reloc_pc));
+			lasm_close_files();
+			
+			append = 1;
+		}
 		lasm_close();
 		return 0;
 	}

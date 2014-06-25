@@ -1,5 +1,3 @@
-jmp @main
-
 ; addition instruction (pops 2 values off the stack and pushes the result of their addition) ;
 add_instr:
 	pop %gr1
@@ -35,15 +33,5 @@ div_instr:
 	div %eax %gr1 %gr2
 	push %eax
 	ret @div_instr
-
-main:
-	mov %eax 10
-	push %eax
-	mov %eax 20
-	push %eax
-	jmp @add_instr
-	pop %eax
-	prt %eax
-	hlt %zero
 
 

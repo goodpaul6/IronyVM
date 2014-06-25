@@ -106,6 +106,9 @@ main:
 	pushi 'e'
 	pushi 'h'
 	jmp @stack_to_string
+	movr %ea1 %er1
+	jmp @puts
+	jmp @free
 	hlt %erx
 
 ; this is a function which prints all arguments as characters until a 0 is encountered ;
