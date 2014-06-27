@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 /*
-$i "filename.lasm"
+$d TEST 10
 $m PUSH2 x y 
 (
 	push %-x
@@ -16,8 +16,6 @@ PUSH2 eax ecx
 #define MACRO_PREFIX	'$'
 
 /* the postfixes */
-#define INCLUDE_POST		'i'		// inclusion
-#define LINK_POST			'l'		// linking
 #define DEFINE_POST			'd'		// defining
 #define MACRO_POST			'm'		// macro
 
@@ -33,8 +31,8 @@ PUSH2 eax ecx
 // token types
 typedef enum
 {
-	TOKEN_INCLUDE,
 	TOKEN_MACRO,
+	TOKEN_DEFINE,
 	TOKEN_ID,
 	TOKEN_OB,
 	TOKEN_CB,

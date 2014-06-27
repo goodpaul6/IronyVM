@@ -1,132 +1,15 @@
-
-; allocates %ea1 amount of bytes and places the address into %er1 ;
-malloc:
-	push %eci						; preserve eci register ;
-	get %eci #fnmalloc				; set the call index to the malloc function's call index ;
-	call %eci %er1 %ea1 %zero		; make the call to malloc ;
-	pop %eci						; restore the call index ;
-	ret @malloc						; jump out ;
-
-; frees the memory block pointed to by %ea1 ;
-free:
-	push %eci						; preserve eci register ;
-	get %eci #fnfree				; set the call index to the free function's call index ;
-	call %eci %ea1 %zero %zero		; free the memory ;
-	pop %eci						; restore the call index ;
-	ret @free 						; jump out ;
-
-; sets the memory block pointed to by %ea1 (of length in bytes denoted by %ea3) to %ea2 ;
-mset:
-	push %eci
-	get %eci #fnset
-	call %eci %ea1 %ea2 %ea3
-	pop %eci
-	ret @mset
-
-; sets the byte pointed to by %ea1 to %ea2 ;
-msetb:
-	push %eci
-	get %eci #fnset
-	mov %ea3 1
-	call %eci %ea1 %ea2 %ea3
-	pop %eci
-	ret @msetb
-
-; copies a block of memory pointed to by %ea2 into block pointed to by %ea1 of length %ea3 ;
-mcpy:
-	push %eci
-	get %eci #fncpy
-	call %eci %ea1 %ea2 %ea3
-	pop %eci
-	ret @mcpy
-
-; gets the unsigned byte pointed to by %ea1 and places it in %er1 ;
-tobyte:
-	push %eci
-	get %eci #fntobyte
-
-	push %ea1
-
-	call %eci %ea1 %zero %zero
-	movr %er1 %ea1
-
-	pop %ea1
-
-	pop %eci
-	ret @tobyte
-
-; outputs a string (pointed to by %ea1) to stdio ;
-puts:
-	push %ea1
-	push %gr1 
-
-	mov %gr1 1
-
-	puts_loop:
-		jmp @tobyte
-		ptc %er1
-		add %ea1 %ea1 %gr1
-
-		jnz %er1 @puts_loop
-
-	pop %gr1
-	pop %ea1
-
-	ret @puts
-
-; converts letters on stack to a string of the size %ea1 (returns it's address in %er1) ;
-stack_to_string:
-	jmp @malloc								; allocate the string ;
-	movr %ea1 %er1 							; store the string's address in ea1 ;
-	mov %gr1 1 								; increment value register ;
-	stack_to_string_loop:
-		pop %ea2							; get the character off the stack ;
-		jmp @msetb							; set the character at the current address to the stack character ;
-		add %ea1 %ea1 %gr1 					; move the address of the character up to the next one ;
-		jnz %ea2 @stack_to_string_loop		; continue if this is not a null character ;
-	ret @stack_to_string
+; first link: stdlib.lasm ;
+jmp @main
 
 main:
-	mov %eax 0
-	set %eax #fnmalloc
-	mov %eax 1
-	set %eax #fnfree
-	mov %eax 2
-	set %eax #fnset
-	mov %eax 3
-	set %eax #fncpy
-	mov %eax 4
-	set %eax #fntobyte
+	jmp @stdlib_init
+
 	mov %erx 0
-	pushi '\0'
-	pushi 'o'
-	pushi 'l'
-	pushi 'l'
-	pushi 'e'
-	pushi 'h'
+	"hello world!\n"
 	jmp @stack_to_string
-	movr %ea1 %er1
+	set %er1 #message
+	get %ea1 #message
 	jmp @puts
 	jmp @free
+
 	hlt %erx
-
-; this is a function which prints all arguments as characters until a 0 is encountered ;
-print_all:
-	pop %eax
-	ptc %eax
-	jnz %eax @print_all
-	mov %eax '\n'
-	ptc %eax
-	ret @print_all
-
-; this is a comment ;
-countToTen:
-	mov %ecx 10
-	mov %gr1 1
-	mov %gr2 10
-countToTenLoop:
-	prt %ecx
-	ptc %gr2
-	sub %ecx %ecx %gr1
-	jnz %ecx @countToTenLoop
-	ret @countToTen

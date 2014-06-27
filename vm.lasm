@@ -1,5 +1,12 @@
 jmp @main
 
+; due to the nature of the following instructions, register values cannot be preserved, so this function does it through the database ;
+db_preserve_registers:
+	push %eax
+	; TODO: Implement preservation ;
+	pop %eax
+	ret @db_preserve_registers
+
 ; addition instruction (pops 2 values off the stack and pushes the result of their addition) ;
 add_instr:
 	pop %gr1
@@ -35,5 +42,14 @@ div_instr:
 	div %eax %gr1 %gr2
 	push %eax
 	ret @div_instr
+
+; negation instruction (pops a value of the stack, and pushes it's negative) ;
+neg_instr:
+	pop %gr1
+	neg %gr1 
+	push %gr1 
+	ret @neg_instr
+
+
 
 

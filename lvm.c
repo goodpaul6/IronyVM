@@ -499,7 +499,12 @@ void lvm_close(lvm_t* vm)
 
 void lvm_fnmalloc(lvm_t* vm)
 {
-	vm->regs[vm->reg2] = (intptr_t)malloc((size_t)vm->reg3);
+	vm->regs[vm->reg2] = (intptr_t)malloc((size_t)vm->regs[vm->reg3]);
+}
+
+void lvm_fnrealloc(lvm_t* vm)
+{
+	vm->regs[vm->reg2] = (intptr_t)realloc((void*)vm->regs[vm->reg3], (size_t)vm->regs[vm->reg4]);
 }
 
 void lvm_fnfree(lvm_t* vm)
@@ -519,12 +524,12 @@ void lvm_fncpy(lvm_t* vm)
 
 void lvm_fntobyte(lvm_t* vm)
 {
-	vm->regs[vm->reg2] = *(uint8_t*)vm->regs[vm->reg2];
+	vm->regs[vm->reg2] = (uint8_t)(*(intptr_t*)vm->regs[vm->reg2]);
 }
 
 void lvm_fntodbyte(lvm_t* vm)
 {
-	vm->regs[vm->reg2] = *(uint16_t*)vm->regs[vm->reg2];
+	vm->regs[vm->reg2] = (uint16_t)(*(intptr_t*)vm->regs[vm->reg2]);
 }
 
 void lvm_fntoword(lvm_t* vm)
@@ -554,6 +559,7 @@ int main(int argc, char* argv[])
 		lvm_bind(&vm, &lvm_fntodbyte, 5);
 		lvm_bind(&vm, &lvm_fntoword, 6);
 		lvm_bind(&vm, &lvm_fntodword, 7);
+		lvm_bind(&vm, &lvm_fnrealloc, 8);
 
 		if(argv[1][0] == '-')
 			lvm_setdbg(&vm, 1);

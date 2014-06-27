@@ -1,0 +1,197 @@
+jmp @main	; required at the top of each file ;
+
+; must be called in order for the library to be used ;
+stdlib_init:
+	mov %eax 0
+	set %eax #fnmalloc
+	mov %eax 1
+	set %eax #fnfree
+	mov %eax 2
+	set %eax #fnset
+	mov %eax 3
+	set %eax #fncpy
+	mov %eax 4
+	set %eax #fntobyte
+	mov %eax 8
+	set %eax #fnrealloc
+
+	mov %eax 1
+	set %eax #EXIT_FAILURE
+	
+	mov %eax 0
+	set %eax #EXIT_SUCCESS
+
+	ret @stdlib_init
+
+; standard runtime assert function (if the value of %ea1 is not equal to %ea2, error) ;
+assert_equal:
+	cmp %ea1 %ea2 					; compare ea1 and ea2 ;
+	jne @assert_failure 			; jump to failure if they are not equal ;
+	assert_success: 				; everything was okay ;
+		ret @assert
+	assert_failure:
+		get %erx #EXIT_FAILURE		; get the failure error code ;
+		pushi '\0'
+		pushi '!'
+		pushi 'e'
+		pushi 'r'
+		pushi 'u'
+		pushi 'l'
+		pushi 'i'
+		pushi 'a'
+		pushi 'f'
+		pushi ' '
+		pushi 't'
+		pushi 'r'
+		pushi 'e'
+		pushi 's'
+		pushi 's'
+		pushi 'a'
+		jmp @sputs 					; print out the string ;
+		hlt %erx 					; stop the program (gracefully :P) ;
+
+; standard runtime assert function (if the value of %ea1 is equal to %ea2, error) ;
+assert_notequal:
+	cmp %ea1 %ea2 					; compare ea1 and ea2 ;
+	je @assert_failure 				; jump to failure if they are equal ;
+	assert_success: 				; everything was okay ;
+		ret @assert
+	assert_failure:
+		get %erx #EXIT_FAILURE		; get the failure error code ;
+		pushi '\0'
+		pushi '!'
+		pushi 'e'
+		pushi 'r'
+		pushi 'u'
+		pushi 'l'
+		pushi 'i'
+		pushi 'a'
+		pushi 'f'
+		pushi ' '
+		pushi 't'
+		pushi 'r'
+		pushi 'e'
+		pushi 's'
+		pushi 's'
+		pushi 'a'
+		jmp @sputs 					; print out the string ;
+		hlt %erx 					; stop the program (gracefully :P) ;
+
+; allocates %ea1 amount of bytes and places the address into %er1 ;
+malloc:
+	push %eci						; preserve eci register ;
+	get %eci #fnmalloc				; set the call index to the malloc function's call index ;
+	call %eci %er1 %ea1 %zero		; make the call to malloc ;
+	pop %eci						; restore the call index ;
+	ret @malloc						; jump out ;
+
+; reallocates %ea1 pointer to point to a block of size %ea2 and stores the resulting address in %er1 ;
+realloc:
+	push %eci						; preserve eci register ;
+	get %eci #fnrealloc				; set the call index to the realloc function's call index ;
+	call %eci %er1 %ea1 %ea2		; make the call to realloc ;
+	pop %eci						; restore the call index ;
+	ret @realloc					; jump out ;
+
+; frees the memory block pointed to by %ea1 ;
+free:
+	push %eci						; preserve eci register ;
+	get %eci #fnfree				; set the call index to the free function's call index ;
+	call %eci %ea1 %zero %zero		; free the memory ;
+	pop %eci						; restore the call index ;
+	ret @free 						; jump out ;
+
+; sets the memory block pointed to by %ea1 (of length in bytes denoted by %ea3) to %ea2 ;
+mset:
+	push %eci						; preserve call index ;
+	get %eci #fnset					; set the call index to the memset function value ;
+	call %eci %ea1 %ea2 %ea3		; call the function with the respective arguments ;
+	pop %eci						; restore call index ;
+	ret @mset 						; jump out ;
+
+; sets the byte pointed to by %ea1 to %ea2 ;
+msetb:
+	push %eci						; preserve call index ;
+	get %eci #fnset 				; set the call index to the memset function value ;
+
+	push %ea3						; preserve argument 3 ;
+
+	mov %ea3 1						; since we're only setting one byte, we set ea3 to 1 ;
+	call %eci %ea1 %ea2 %ea3		; call the function with the respective arguments ;
+
+	pop %ea3						; restore argument 3 ;
+	pop %eci						; restore call index ;
+
+	ret @msetb						; jump out ;
+
+; copies a block of memory pointed to by %ea2 into block pointed to by %ea1 of length %ea3 ;
+mcpy:
+	push %eci 						; preserve call index ;
+	get %eci #fncpy					; set the call index to the memcpy function value ;
+	call %eci %ea1 %ea2 %ea3 		; call the function ;
+	pop %eci						; restore the call index ;
+	ret @mcpy 						; jump out ;
+
+; gets the unsigned byte pointed to by %ea1 and places it in %er1 ;
+tobyte:
+	push %eci  						; preserve call index ;
+	get %eci #fntobyte				; set the call index to the tobyte function value ;
+
+	push %ea1 						; preserve argument 1 ;
+
+	call %eci %ea1 %zero %zero 		; call the function (tobyte) ;
+	movr %er1 %ea1 					; since %ea1 is directly altered, place it in the result ;
+
+	pop %ea1 						; restore the argument value ;
+ 
+	pop %eci 						; restore call index ;
+	ret @tobyte 					; jump out ;
+
+; outputs a string (pointed to by %ea1) to stdio ;
+puts:
+	push %ea1								; preserve the argument ;
+	push %gr1 								; preserve %gr1 ;
+
+	mov %gr1 1								; set %gr1 to 1 ;
+
+	puts_loop:								; prints characters until null (0) value is encountered ;
+		jmp @tobyte							; converts the current value (within the string) to an unsigned byte ;
+		jz %er1 @puts_out					; jump out early if the character is null ;
+		ptc %er1							; print the resulting value as a character (the character in the string) ;
+		add %ea1 %ea1 %gr1					; increment the argument pointer ;
+		jnz %er1 @puts_loop					; until 0 is encountered ;
+
+	puts_out:
+		pop %gr1								; restore %gr1 ;
+		pop %ea1								; restore argument ;
+
+		ret @puts 								; jump out ;
+
+; converts letters on stack to a string (returns it's address in %er1), the strings data must be null terminated ;
+stack_to_string:
+	mov %gr1 1 								; increment value register ;
+	push %ea1
+	movr %ea1 %esl
+	add %ea1 %ea1 %gr1
+	jmp @malloc								; allocate the string ;
+	pop %ea1
+	
+	movr %ea1 %er1 							; store the string's address in ea1 ;
+	stack_to_string_loop:
+		pop %ea2							; get the character off the stack ;
+		jmp @msetb							; set the character at the current address to the stack character ;
+		add %ea1 %ea1 %gr1 					; move the address of the character up to the next one ;
+		jnz %ea2 @stack_to_string_loop		; continue if this is not a null character ;
+	ret @stack_to_string
+
+; similar to puts but prints letters directly from stack ;
+sputs:
+	set %eax #eax 							; preserve eax in the database ;
+	sputs_loop:
+		pop %eax 							; pop the letter into eax ;
+		jz %eax @sputs_out
+		ptc %eax 							; print the character ;
+		jnz %eax @sputs_loop				; continue until null termination ;
+	sputs_out:
+		get %eax #eax 						; restore eax ;
+		ret @sputs 							; jump out ;

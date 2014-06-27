@@ -11,7 +11,7 @@
 #define MAX_MNEMCHARS	6
 
 /* maximum token length */
-#define MAX_TOKLEN		256
+#define MAX_TOKLEN		0xFFFF
 
 /* register amount */
 #define NUM_REGS		16
@@ -27,6 +27,9 @@
 
 /* max amount of variables */
 #define MAX_VAR_AMT		0xFFFF
+
+/* pushi opcode (strings depend on this) */
+#define PUSHI_OPCODE 	0x26
 
 /* the operand types */
 typedef enum 
@@ -120,7 +123,8 @@ typedef enum
 	TOKEN_LABEL,
 	TOKEN_INTEGER,
 	TOKEN_REGISTER,
-	TOKEN_INSTR
+	TOKEN_INSTR,
+	TOKEN_STRING,
 } lasm_tokentype;
 
 // the token value struct
@@ -128,8 +132,9 @@ struct lasm_token_s
 {
 	lasm_tokentype type;		// the type of the token
 	char buffer[MAX_TOKLEN];	// the buffer which has a string representation of the token
-	intptr_t integer;		// if the token was an integer, this holds the integer value of the token
+	intptr_t integer;			// if the token was an integer, this holds the integer value of the token
 	size_t pc;					// location in program
+	size_t length;				// length of string in buffer
 } lasm_tokenval;
 
 // the symbol table struct
@@ -150,6 +155,7 @@ struct
 	int last;											// last character read
 	int lineno;											// line number
 	size_t start_pc;									// starting pc
+
 } lasm;
 
 // prototypes
@@ -289,6 +295,13 @@ void lasm_symtable_extend()
 	}
 }
 
+// prints the symbol table
+void lasm_symtable_debug()
+{
+	unsigned int i; for(i = 0; i < lasm.symbols.length; i++)
+		printf("label %s at pc %u\n", lasm.symbols.labels[i], lasm.symbols.pcs[i]);
+}
+
 // handle escape sequences 
 void lasm_handle_escape_seq()
 {
@@ -309,7 +322,50 @@ void lasm_handle_escape_seq()
 			case '0':
 				lasm.last = '\0';
 			break;
+			case '\'':
+				lasm.last = '\'';
+			break;
+			case '"':
+				lasm.last = '\"';
+			break;
+			case '\\':
+				lasm.last = '\\';
+			break;
 		}
+	}
+}
+
+// assemble a string into a sequence of stack instructions
+void lasm_lex_string()
+{
+	lasm.last = fgetc(lasm.input_file);
+
+	int pos = 0;
+	while(lasm.last != '"')
+	{
+		lasm_handle_escape_seq();
+		// each character amounts to one instruction
+		++lasm_tokenval.pc;	
+		lasm_tokenval.buffer[pos] = lasm.last;
+		lasm.last = fgetc(lasm.input_file);
+		++pos;
+		lasm_tokenval.buffer[pos] = '\0';
+	}
+	lasm_tokenval.length = pos;
+}	
+
+// outputs a string as a series of instructions
+void lasm_output_string(const char* str, size_t len)
+{
+	fprintf(lasm.output_file, "%02x%06x\n", PUSHI_OPCODE, '\0');
+
+	int pos = len;
+
+	while(pos >= 0)
+	{
+		int ch = str[pos];
+		fprintf(lasm.output_file, "%02x%06x\n", PUSHI_OPCODE, ch);
+		pos -= 1;
 	}
 }
 
@@ -362,6 +418,12 @@ int lasm_read_token()
 				lasm.last = fgetc(lasm.input_file);
 			}
 			lasm_tokenval.type = TOKEN_REGISTER;
+		}
+		else if(lasm.last == '"')
+		{
+			lasm_lex_string();
+			lasm.last = fgetc(lasm.input_file);
+			lasm_tokenval.type = TOKEN_STRING;
 		}
 		else if(isdigit(lasm.last))
 		{
@@ -546,6 +608,8 @@ int lasm_parse_token(size_t* instr)
 			fprintf(lasm.output_file, "%02x%01x%01x%01x%01x00\n", lasm_mnemdefs[mnem_idx].opcode, reg, reg2, reg3, reg4);
 		}
 	}
+	else if(lasm_tokenval.type == TOKEN_STRING)
+		lasm_output_string(lasm_tokenval.buffer, lasm_tokenval.length);
 	return 1;
 }
 
@@ -565,6 +629,8 @@ int main(int argc, char* argv[])
 			lasm_symtable_build(&reloc_pc);
 			lasm_close_files();
 		}
+
+		lasm_symtable_debug();
 
 		// reset the relocation program counter
 		reloc_pc = 0;
